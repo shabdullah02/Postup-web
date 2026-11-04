@@ -22,6 +22,38 @@ export const content = {
   privacyLink: "Privacy policy",
   cookieButton: "Accept",
   footer: "© 2026 Postup. All rights reserved.",
+  marketing: {
+    plans: [
+      {
+        id: "free",
+        name: "Free",
+        description: "A focused start for an individual creator.",
+        monthly: 0,
+        annual: 0,
+        features: ["1 social account", "10 scheduled posts / month", "5 AI generations / month", "Core publishing workspace"],
+        action: "Start free",
+      },
+      {
+        id: "pro",
+        name: "Pro",
+        description: "More room for a consistent publishing rhythm.",
+        monthly: 19,
+        annual: 15,
+        popular: true,
+        features: ["5 social accounts", "Unlimited scheduled posts", "100 AI generations / month", "Priority support"],
+        action: "Choose Pro",
+      },
+      {
+        id: "agency",
+        name: "Agency",
+        description: "A shared workflow for client-facing teams.",
+        monthly: 49,
+        annual: 39,
+        features: ["20 social accounts", "Unlimited scheduled posts", "500 AI generations / month", "Team workspace and priority support"],
+        action: "Choose Agency",
+      },
+    ],
+  },
   posts: [
     {
       platform: "Instagram",
