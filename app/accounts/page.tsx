@@ -1,9 +1,17 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AuthGate } from "@/components/AuthGate"
-import { facebookConnectUrl } from "@/lib/api"
+import { useAuth } from "@/components/AuthProvider"
+import {
+  facebookConnectUrl,
+  instagramConnectUrl,
+  deleteAccount,
+  listAccounts,
+  listPendingSocialAccounts,
+  type Account,
+} from "@/lib/api"
 import {
   Card,
   CardContent,
@@ -12,15 +20,11 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { listAccounts, type Account } from "@/lib/api"
-
-const facebookErrors = {
-  no_pages: "No Facebook Page found on this account.",
-  permissions_declined: "Posting permissions were declined. Connect again and approve all permissions.",
-  page_not_available: "This Facebook account cannot manage that Page.",
-} as const
+import { Badge } from "@/components/ui/badge"
+import { accountReauthWarning, facebookErrors, providerLabel } from "@/lib/social"
 
 type FacebookError = keyof typeof facebookErrors
+type CallbackNotice = { type: "success" } | { type: "error"; code: FacebookError }
 
 export default function AccountsPage() {
   return (
@@ -31,30 +35,41 @@ export default function AccountsPage() {
 }
 
 function AccountsPageContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+  const requiresEmailVerification = Boolean(user && !user.is_superuser && !user.email_verified)
+  const [selectionError, setSelectionError] = useState("")
   const errorParam = searchParams.get("fb_error")
-  const facebookError = errorParam && errorParam in facebookErrors
-    ? errorParam as FacebookError
-    : null
-  const facebookConnected = searchParams.get("fb_connected") === "1"
+  const initialNotice: CallbackNotice | null = searchParams.get("fb_connected") === "1"
+    ? { type: "success" }
+    : errorParam && errorParam in facebookErrors
+      ? { type: "error", code: errorParam as FacebookError }
+      : null
+  const [notice] = useState(initialNotice)
 
   useEffect(() => {
-    async function loadAccounts() {
-      try {
-        setError("")
-        setAccounts(await listAccounts())
-      } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "Unable to load accounts")
-      } finally {
-        setIsLoading(false)
-      }
+    if (searchParams.has("fb_connected") || searchParams.has("fb_error")) {
+      router.replace("/accounts")
     }
+  }, [router, searchParams])
 
-    void loadAccounts()
-  }, [])
+  useEffect(() => {
+    let isMounted = true
+    listPendingSocialAccounts()
+      .then((pendingAccounts) => {
+        if (isMounted && pendingAccounts.length > 0) router.replace("/accounts/select")
+      })
+      .catch((requestError) => {
+        if (isMounted) {
+          setSelectionError(requestError instanceof Error ? requestError.message : "Unable to check for accounts to connect")
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [router])
 
   return (
     <AuthGate>
@@ -66,63 +81,148 @@ function AccountsPageContent() {
                 <h1 className="text-2xl font-semibold">Accounts</h1>
                 <p className="text-muted-foreground">Connected social accounts.</p>
               </div>
-              <Button type="button" onClick={() => window.location.assign(facebookConnectUrl())}>
-                Connect Facebook
-              </Button>
+              <span className="inline-flex" title={requiresEmailVerification ? "Verify your email before connecting an account." : undefined}>
+                <Button type="button" disabled={requiresEmailVerification} onClick={() => { window.location.href = facebookConnectUrl() }}>
+                  Connect Facebook
+                </Button>
+              </span>
+              <span className="inline-flex" title={requiresEmailVerification ? "Verify your email before connecting an account." : undefined}>
+                <Button type="button" variant="outline" disabled={requiresEmailVerification} onClick={() => { window.location.href = instagramConnectUrl() }}>
+                  Connect Instagram
+                </Button>
+              </span>
             </div>
           </header>
 
-          {facebookError === "no_pages" ? (
-            <p role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-              No Facebook Page found on this account. Create a Page (<a className="underline" href="https://www.facebook.com/pages/create" target="_blank" rel="noreferrer">https://www.facebook.com/pages/create</a>), then click Connect again. When connecting, select your Page in the Facebook dialog.
-            </p>
-          ) : facebookError ? (
-            <p role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-              {facebookErrors[facebookError]}
-            </p>
-          ) : facebookConnected ? (
-            <p role="status" className="rounded-md border border-green-600/30 bg-green-600/10 p-4 text-sm">
-              Facebook connected.
-            </p>
-          ) : null}
-
-          {accounts.some((account) => account.status === "needs_reauth") ? (
-            <p role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-              One or more accounts need to be reconnected before they can be used.
-            </p>
-          ) : null}
-
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-          {isLoading ? (
-            <p>Loading accounts...</p>
-          ) : accounts.length === 0 ? (
-            <p className="text-muted-foreground">No accounts connected.</p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {accounts.map((account) => (
-                <Card key={account.id}>
-                  <CardHeader>
-                    <CardTitle>{account.name}</CardTitle>
-                    <CardDescription>{account.provider}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">External ID: {account.external_id}</p>
-                      <p className="text-sm text-muted-foreground">Status: {account.status}</p>
-                      {account.status === "needs_reauth" ? (
-                        <Button type="button" size="sm" onClick={() => window.location.assign(facebookConnectUrl(account.id))}>
-                          Reconnect
-                        </Button>
-                      ) : null}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          {notice?.type === "error" ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <p>{facebookErrors[notice.code]}</p>
+              <span className="inline-flex" title={requiresEmailVerification ? "Verify your email before connecting an account." : undefined}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={requiresEmailVerification}
+                  onClick={() => {
+                    window.location.href = notice.code === "no_instagram_accounts"
+                      ? instagramConnectUrl()
+                      : facebookConnectUrl()
+                  }}
+                >
+                  Try again
+                </Button>
+              </span>
             </div>
-          )}
+          ) : notice?.type === "success" ? (
+            <p role="status" className="rounded-md border border-green-600/30 bg-green-600/10 p-4 text-sm">
+              Account connected.
+            </p>
+          ) : null}
+
+          {selectionError ? <p role="alert" className="text-sm text-destructive">{selectionError}</p> : null}
+          <AccountList />
         </div>
       </main>
     </AuthGate>
+  )
+}
+
+function AccountList() {
+  const { user } = useAuth()
+  const requiresEmailVerification = Boolean(user && !user.is_superuser && !user.email_verified)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loadError, setLoadError] = useState("")
+  const [removeError, setRemoveError] = useState("")
+  const [removingAccountId, setRemovingAccountId] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+    listAccounts()
+      .then((loadedAccounts) => {
+        if (isMounted) setAccounts(loadedAccounts)
+      })
+      .catch((requestError) => {
+        if (isMounted) {
+          setLoadError(requestError instanceof Error ? requestError.message : "Unable to load accounts")
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  if (isLoading) return <p>Loading accounts...</p>
+
+  async function handleRemove(account: Account) {
+    if (!window.confirm(`Remove ${account.name}? Its draft and posted history will be deleted too.`)) return
+    setRemoveError("")
+    setRemovingAccountId(account.id)
+    try {
+      await deleteAccount(account.id)
+      setAccounts((currentAccounts) => currentAccounts.filter(({ id }) => id !== account.id))
+    } catch (requestError) {
+      setRemoveError(requestError instanceof Error ? requestError.message : "Unable to remove account.")
+    } finally {
+      setRemovingAccountId(null)
+    }
+  }
+
+  if (loadError) return <p role="alert" className="text-sm text-destructive">{loadError}</p>
+
+  return (
+    <div className="space-y-4">
+      {removeError ? <p role="alert" className="text-sm text-destructive">{removeError}</p> : null}
+      {accounts.length === 0 ? (
+        <p className="text-muted-foreground">No accounts connected.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {accounts.map((account) => (
+            <Card key={account.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle>{account.name}</CardTitle>
+                  <Badge variant="outline">{providerLabel(account.provider)}</Badge>
+                </div>
+                <CardDescription>Status: {account.status.replace("_", " ")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Connected {new Date(account.connected_at).toLocaleDateString()}
+                  </p>
+                  {accountReauthWarning(account) ? (
+                    <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">
+                      {accountReauthWarning(account)}
+                    </p>
+                  ) : null}
+                  <div className="flex gap-2">
+                    {account.status === "needs_reauth" && account.provider === "facebook" ? (
+                      <span className="inline-flex" title={requiresEmailVerification ? "Verify your email before connecting an account." : undefined}>
+                        <Button type="button" size="sm" disabled={requiresEmailVerification || removingAccountId !== null} onClick={() => { window.location.href = facebookConnectUrl(account.id) }}>
+                          Reconnect
+                        </Button>
+                      </span>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      disabled={removingAccountId !== null}
+                      onClick={() => void handleRemove(account)}
+                    >
+                      {removingAccountId === account.id ? "Removing..." : "Remove"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

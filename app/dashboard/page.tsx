@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AuthGate } from "@/components/AuthGate"
@@ -11,17 +11,23 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { cn } from "cn"
-import { deletePost, listAccounts, listPosts, logout, type Account, type Post } from "@/lib/api"
+import { deletePost, listAccounts, listPosts, logout, publishPostNow, type Account, type Post } from "@/lib/api"
+import { canEditPost, postStatusLabel, providerLabel } from "@/lib/social"
 
-const STATUS_ORDER = ["scheduled", "draft", "posted", "failed"] as const
+const STATUS_ORDER = ["scheduled", "publishing", "draft", "posted", "failed", "deleted_on_facebook"] as const
+const ALWAYS_VISIBLE = new Set<string>(["scheduled", "publishing"])
+const POSTED_PREVIEW = 3
 
 type PostStatusGroup = (typeof STATUS_ORDER)[number]
 
 function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Not scheduled"
+}
+
+function timeOf(value: string | null) {
+  return value ? new Date(value).getTime() : 0
 }
 
 export default function DashboardPage() {
@@ -30,35 +36,77 @@ export default function DashboardPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedProvider, setSelectedProvider] = useState<"all" | "facebook" | "instagram">("all")
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const [publishingPostIds, setPublishingPostIds] = useState<number[]>([])
+  const publishingPostIdsRef = useRef(new Set<number>())
 
-  async function loadData() {
+  async function loadData(initialLoad = false) {
     try {
-      setError("")
       const [accountsData, postsData] = await Promise.all([listAccounts(), listPosts()])
+      setError("")
       setAccounts(accountsData)
       setPosts(postsData)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to load posts")
+    } finally {
+      if (initialLoad) setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    void loadData()
+    const initialLoad = window.setTimeout(() => {
+      void loadData(true)
+    }, 0)
     const interval = window.setInterval(() => {
       void loadData()
     }, 15000)
 
-    return () => window.clearInterval(interval)
+    return () => {
+      window.clearTimeout(initialLoad)
+      window.clearInterval(interval)
+    }
   }, [])
 
+  const filteredAccounts = selectedProvider === "all"
+    ? accounts
+    : accounts.filter((account) => account.provider === selectedProvider)
   const accountMap = new Map(accounts.map((account) => [account.id, account]))
-  const groupedPosts = STATUS_ORDER.reduce(
-    (groups, status) => {
-      groups[status] = posts.filter((post) => post.status === status)
-      return groups
-    },
-    {} as Record<PostStatusGroup, Post[]>
-  )
+  const activeAccountId = filteredAccounts.some((account) => account.id === selectedAccountId)
+    ? selectedAccountId
+    : filteredAccounts[0]?.id ?? null
+  const failedCount = posts.filter((post) => post.account === activeAccountId && post.status === "failed").length
+  const { groupedPosts, hiddenCount } = useMemo(() => {
+    const mine = posts.filter((post) => post.account === activeAccountId)
+    const groups = {} as Record<PostStatusGroup, Post[]>
+    let hidden = 0
+
+    for (const status of STATUS_ORDER) {
+      const items = mine.filter((post) => post.status === status)
+
+      if (status === "scheduled" || status === "publishing") {
+        items.sort((a, b) => timeOf(a.scheduled_at) - timeOf(b.scheduled_at))
+      } else {
+        items.sort(
+          (a, b) => timeOf(b.posted_at ?? b.created_at) - timeOf(a.posted_at ?? a.created_at)
+        )
+      }
+
+      if (showAll || ALWAYS_VISIBLE.has(status)) {
+        groups[status] = items
+      } else if (status === "posted") {
+        groups[status] = items.slice(0, POSTED_PREVIEW)
+        hidden += Math.max(0, items.length - POSTED_PREVIEW)
+      } else {
+        groups[status] = []
+        hidden += items.length
+      }
+    }
+
+    return { groupedPosts: groups, hiddenCount: hidden }
+  }, [posts, activeAccountId, showAll])
 
   async function handleDelete(post: Post) {
     if (!window.confirm("Delete this post?")) {
@@ -70,6 +118,25 @@ export default function DashboardPage() {
       await loadData()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to delete post")
+    }
+  }
+
+  async function handlePublishNow(post: Post, accountName: string) {
+    if (publishingPostIdsRef.current.has(post.id)) return
+    if (!window.confirm(`Publish this to ${accountName} now?`)) return
+
+    publishingPostIdsRef.current.add(post.id)
+    setPublishingPostIds((current) => [...current, post.id])
+    setError("")
+
+    try {
+      const updatedPost = await publishPostNow(post.id)
+      setPosts((current) => current.map((item) => item.id === updatedPost.id ? updatedPost : item))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to publish post")
+    } finally {
+      publishingPostIdsRef.current.delete(post.id)
+      setPublishingPostIds((current) => current.filter((id) => id !== post.id))
     }
   }
 
@@ -106,6 +173,47 @@ export default function DashboardPage() {
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
+          {isLoading ? <p role="status" className="text-sm text-muted-foreground">Loading posts...</p> : null}
+
+          {!isLoading && !error && accounts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No social accounts connected.</p>
+          ) : null}
+
+          {accounts.length > 0 && (
+            <>
+              <div className="flex flex-wrap items-center gap-2" aria-label="Filter posts by provider">
+                {(["all", "facebook", "instagram"] as const).map((provider) => (
+                  <Button
+                    key={provider}
+                    size="sm"
+                    variant={selectedProvider === provider ? "default" : "outline"}
+                    onClick={() => setSelectedProvider(provider)}
+                  >
+                    {provider === "all" ? "All providers" : providerLabel(provider)}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+              {filteredAccounts.map((account) => (
+                <Button
+                  key={account.id}
+                  size="sm"
+                  variant={account.id === activeAccountId ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedAccountId(account.id)
+                    setShowAll(false)
+                  }}
+                >
+                  <span>{account.name}</span>
+                  <Badge variant="outline">{providerLabel(account.provider)}</Badge>
+                  {account.status !== "active" ? ` (${account.status.replace("_", " ")})` : ""}
+                </Button>
+              ))}
+              {failedCount > 0 ? <Badge variant="destructive" aria-label={`${failedCount} failed posts`}>{failedCount} failed</Badge> : null}
+              </div>
+            </>
+          )}
+
           {STATUS_ORDER.map((status) => {
             const sectionPosts = groupedPosts[status]
             if (sectionPosts.length === 0) {
@@ -114,7 +222,7 @@ export default function DashboardPage() {
 
             return (
               <section key={status} className="space-y-3">
-                <h2 className="text-lg font-medium capitalize">{status}</h2>
+                <h2 className="text-lg font-medium capitalize">{postStatusLabel(status)}</h2>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {sectionPosts.map((post) => {
                     const account = accountMap.get(post.account)
@@ -125,9 +233,14 @@ export default function DashboardPage() {
                         <CardHeader className="gap-3">
                           <div className="flex items-start justify-between gap-3">
                             <Badge variant={post.status === "failed" ? "destructive" : "secondary"}>
-                              {post.status}
+                              {postStatusLabel(post.status)}
                             </Badge>
-                            {account ? <span className="text-sm text-muted-foreground">{account.name}</span> : null}
+                            {account ? (
+                              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {account.name}
+                                <Badge variant="outline">{providerLabel(account.provider)}</Badge>
+                              </span>
+                            ) : null}
                           </div>
                           <p className="text-sm leading-6">{post.content.slice(0, 140)}{post.content.length > 140 ? "…" : ""}</p>
                         </CardHeader>
@@ -135,11 +248,28 @@ export default function DashboardPage() {
                           <p className="text-xs text-muted-foreground">
                             {formatDate(dateValue)}
                           </p>
+                          {post.permalink_url ? (
+                            <Link
+                              href={post.permalink_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-primary underline underline-offset-4"
+                            >
+                              View on {providerLabel(account?.provider ?? "facebook")}
+                            </Link>
+                          ) : null}
                           {post.status === "failed" && post.error ? (
                             <p className="text-sm text-destructive">{post.error}</p>
                           ) : null}
-                          {(post.status === "draft" || post.status === "scheduled") && (
+                          {canEditPost(post) && (
                             <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => void handlePublishNow(post, account?.name ?? "this account")}
+                                disabled={publishingPostIds.includes(post.id)}
+                              >
+                                {publishingPostIds.includes(post.id) ? "Publishing..." : "Post now"}
+                              </Button>
                               <Link
                                 className={cn(buttonVariants({ size: "sm" }))}
                                 href={`/compose?id=${post.id}`}
@@ -159,6 +289,21 @@ export default function DashboardPage() {
               </section>
             )
           })}
+
+          {(hiddenCount > 0 || showAll) && (
+            <div>
+              <Button variant="outline" size="sm" onClick={() => setShowAll((value) => !value)}>
+                {showAll ? "Show less" : `See more (${hiddenCount})`}
+              </Button>
+            </div>
+          )}
+
+          {!isLoading && !error && accounts.length > 0 &&
+            STATUS_ORDER.every((status) => groupedPosts[status].length === 0) && (
+              <p className="text-sm text-muted-foreground">
+                No scheduled or recent posts for this account.
+              </p>
+            )}
         </div>
       </main>
     </AuthGate>

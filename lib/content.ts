@@ -2,7 +2,7 @@ export const content = {
   appName: "Postup",
   headline: ["Plan it once.", "Publish everywhere.", "Stay in control."],
   subheadline:
-    "Postup is a simple scheduler for Facebook, Instagram and LinkedIn. Draft your posts, queue them for the best time, and track what works, all from one calm workspace.",
+    "Postup is a focused workspace for planning and scheduling Facebook Page content. Draft ahead, keep your publishing queue clear, and manage connected Pages from one calm place.",
   primaryAction: "Start for free",
   secondaryAction: "See how it works",
   sidebarItems: ["Calendar", "Drafts", "Published", "Analytics", "Accounts"],
@@ -23,6 +23,22 @@ export const content = {
   cookieButton: "Accept",
   footer: "© 2026 Postup. All rights reserved.",
   marketing: {
+    proofHeading: "Built for teams that publish with intention",
+    proofNote: "Partner names below are illustrative placeholders.",
+    logos: ["Northstar", "Common Thread", "Fieldnotes", "Goodform"],
+    features: [
+      { title: "One clear publishing queue", description: "Keep Facebook Page drafts and scheduled posts together in one easy-to-scan view." },
+      { title: "A calmer content rhythm", description: "Draft ahead, set a schedule, and keep the next post visible without another spreadsheet." },
+      { title: "Clear account control", description: "See which social accounts are connected and reconnect access when a token needs attention." },
+      { title: "A lightweight planning loop", description: "Move from draft to schedule to published work without losing sight of what comes next." },
+      { title: "AI-assisted drafts", description: "Turn a topic into a starting point, then shape the copy in your own voice." },
+      { title: "Made for small teams", description: "Move from idea to scheduled post with a focused workspace and fewer handoffs." },
+    ],
+    steps: [
+      { number: "01", title: "Connect your accounts", description: "Authorize your social accounts and choose the Pages you manage." },
+      { number: "02", title: "Prepare your posts", description: "Write a draft or use AI to create a first pass, then make it yours." },
+      { number: "03", title: "Schedule and review", description: "Choose a time and follow scheduled and published work from your dashboard." },
+    ],
     plans: [
       {
         id: "free",
@@ -53,6 +69,18 @@ export const content = {
         action: "Choose Agency",
       },
     ],
+    testimonials: [
+      { quote: "We finally have one place to see what is ready, what is scheduled, and what needs attention.", name: "Placeholder customer", role: "Marketing lead, sample company" },
+      { quote: "Planning the week takes less back-and-forth, and the queue stays easy to scan.", name: "Placeholder customer", role: "Founder, sample studio" },
+      { quote: "A small tool that keeps the publishing routine moving without adding process.", name: "Placeholder customer", role: "Creator, sample brand" },
+    ],
+    faq: [
+      { question: "Which social platforms can I connect?", answer: "Postup currently supports Facebook Pages, with additional channel support planned as integrations become available." },
+      { question: "Can I change plans later?", answer: "Yes. You can choose a different plan or manage your subscription from Billing. Available actions depend on your account and billing status." },
+      { question: "Does Postup publish without approval?", answer: "Posts are created and scheduled from your workspace. Review your copy and schedule before saving or publishing." },
+      { question: "Can I cancel a paid plan?", answer: "Use Manage billing in your workspace to open the billing portal and review the options available for your subscription." },
+    ],
+    contactEmail: "hello@postup.app",
   },
   posts: [
     {

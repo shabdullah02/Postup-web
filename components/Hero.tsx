@@ -29,7 +29,7 @@ export default function Hero() {
           {content.subheadline}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link href={user ? "/dashboard" : "/login"} onClick={(event) => { if (isLoading) event.preventDefault() }} aria-disabled={isLoading} className="inline-flex items-center gap-2 rounded-[5px] bg-[var(--button-background)] px-[24px] py-[12px] text-[15.2px] font-medium text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+          <Link href={user ? "/dashboard" : "/signup"} onClick={(event) => { if (isLoading) event.preventDefault() }} aria-disabled={isLoading} className="inline-flex items-center gap-2 rounded-[5px] bg-[var(--button-background)] px-[24px] py-[12px] text-[15.2px] font-medium text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
             {content.primaryAction}<ArrowRight className="size-4" aria-hidden="true" />
           </Link>
           <Link href="#features" className="group inline-flex items-center gap-2 rounded-[5px] border border-[var(--border-color)] px-[24px] py-[12px] text-[15.2px] font-medium text-[var(--primary-text)] transition-colors duration-150 hover:bg-[var(--surface)]">
