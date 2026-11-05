@@ -15,7 +15,7 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
-const protectedPaths = ["/accounts", "/select", "/billing", "/compose", "/dashboard", "/settings", "/admin"]
+const protectedPaths = ["/accounts", "/select", "/billing", "/compose", "/dashboard", "/settings", "/admin", "/analytics"]
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()

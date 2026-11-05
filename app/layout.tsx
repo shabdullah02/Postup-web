@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
 import AccountBanners from "@/components/AccountBanners";
 import { AuthProvider } from "@/components/AuthProvider";
+import AppShell from "@/components/AppShell";
 import { BillingProvider } from "@/components/BillingProvider";
 import { PlanLimitPrompt } from "@/components/BillingNotices";
 import { content } from "@/lib/content";
@@ -55,9 +56,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <BillingProvider>
               <Frame>
                 <Navbar />
-                <AccountBanners />
-                <div>{children}</div>
-                <Footer />
+                <AppShell>
+                  <AccountBanners />
+                  {children}
+                  <Footer />
+                </AppShell>
                 <CookieBanner />
                 <PlanLimitPrompt />
               </Frame>

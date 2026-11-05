@@ -91,6 +91,25 @@ export type SocialAccount = {
   connected_at: string
 }
 
+export type AnalyticsMetric = "views" | "reach" | "engagements" | "follows" | "unfollows" | "followers_total"
+
+export type AnalyticsOverview = {
+  range: string
+  totals: Record<AnalyticsMetric, number | null>
+  series: Partial<Record<AnalyticsMetric, { date: string; value: number | null }[]>>
+  unavailable: AnalyticsMetric[]
+}
+
+export type AnalyticsPost = {
+  id: number
+  message: string
+  created_time: string
+  permalink_url: string
+  reactions: number | null
+  comments: number | null
+  shares: number | null
+}
+
 export type Plan = "free" | "pro" | "agency"
 
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "suspended"

@@ -5,6 +5,8 @@ import type {
   AdminUserPage as ContractAdminUserPage,
   AdminUserActionResponse,
   ApiErrorResponse,
+  AnalyticsOverview,
+  AnalyticsPost,
   AuthIdentity,
   AuditLogPage,
   AuthUser,
@@ -344,6 +346,19 @@ export async function fetchCsrf(): Promise<void> {
 
 export async function listAccounts(): Promise<Account[]> {
   return unwrap(await (await apiFetch("/api/auth/social-accounts/")).json())
+}
+
+export async function listAnalyticsAccounts(): Promise<Account[]> {
+  return unwrap(await (await apiFetch("/api/social-accounts/")).json())
+}
+
+export async function getAnalyticsOverview(accountId: number, days: 7 | 28 | 90): Promise<AnalyticsOverview> {
+  const query = new URLSearchParams({ account: String(accountId), days: String(days) })
+  return (await apiFetch(`/api/analytics/overview/?${query.toString()}`)).json() as Promise<AnalyticsOverview>
+}
+
+export async function listAnalyticsPosts(accountId: number): Promise<AnalyticsPost[]> {
+  return unwrap(await (await apiFetch(`/api/analytics/posts/?account=${encodeURIComponent(String(accountId))}`)).json())
 }
 
 export async function listPosts(): Promise<Post[]> {
