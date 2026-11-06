@@ -5,6 +5,41 @@ import {
   listAnalyticsAccounts,
   listAnalyticsPosts,
 } from "../lib/api.ts"
+import { buildAnalyticsChartPoints } from "../lib/analytics-chart.ts"
+
+const dates = [
+  "2026-10-31",
+  "2026-11-01",
+  "2026-11-02",
+  "2026-11-03",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06",
+]
+
+function overviewWithSeries({ follows, unfollows, followersTotal }) {
+  return {
+    range: { since: dates[0], until: dates.at(-1), days: 7 },
+    totals: {
+      views: null,
+      reach: null,
+      engagements: 0,
+      follows: 0,
+      unfollows: 0,
+      followers_total: 2,
+    },
+    series: {
+      views: null,
+      follows: follows.map((value, index) => ({ date: dates[index], value })),
+      unfollows: unfollows.map((value, index) => ({ date: dates[index], value })),
+      followers_total: followersTotal.map((value, index) => ({ date: dates[index], value })),
+    },
+    unavailable: [
+      { key: "views", metric: "page_posts_impressions", code: "metric_unavailable" },
+      { key: "reach", metric: "page_posts_impressions_unique", code: "metric_unavailable" },
+    ],
+  }
+}
 
 test("analytics API helpers use the documented account, range, and post endpoints", async (context) => {
   const originalFetch = globalThis.fetch
@@ -60,4 +95,40 @@ test("analytics errors preserve the backend error code for page-specific states"
   })
 
   await assert.rejects(getAnalyticsOverview(8, 7), (error) => error.code === "needs_reauth")
+})
+
+test("repeated follower totals and zero net changes do not fabricate flat history", () => {
+  const overview = overviewWithSeries({
+    follows: [0, 0, 0, 0, 0, 0, 0],
+    unfollows: [0, 0, 0, 0, 0, 0, 0],
+    followersTotal: [2, 2, 2, 2, 2, 2, 2],
+  })
+
+  const points = buildAnalyticsChartPoints(overview)
+  assert.deepEqual(points.map(({ netChange }) => netChange), [0, 0, 0, 0, 0, 0, 0])
+  assert.deepEqual(points.map(({ followers }) => followers), [null, null, null, null, null, null, null])
+})
+
+test("daily net changes reconstruct follower history from the current total", () => {
+  const overview = overviewWithSeries({
+    follows: [0, 0, 0, 0, 0, 0, 2],
+    unfollows: [0, 0, 0, 0, 0, 0, 0],
+    followersTotal: [2, 2, 2, 2, 2, 2, 2],
+  })
+
+  const points = buildAnalyticsChartPoints(overview)
+  assert.deepEqual(points.map(({ netChange }) => netChange), [0, 0, 0, 0, 0, 0, 2])
+  assert.deepEqual(points.map(({ followers }) => followers), [0, 0, 0, 0, 0, 0, 2])
+})
+
+test("missing daily values remain null and prevent follower-history reconstruction", () => {
+  const overview = overviewWithSeries({
+    follows: [0, 0, 0, null, 0, 0, 2],
+    unfollows: [0, 0, 0, 0, 0, 0, 0],
+    followersTotal: [2, 2, 2, 2, 2, 2, 2],
+  })
+
+  const points = buildAnalyticsChartPoints(overview)
+  assert.equal(points[3].netChange, null)
+  assert.ok(points.every(({ followers }) => followers === null))
 })

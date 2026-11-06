@@ -21,19 +21,16 @@ import {
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
 import {
-  Bar,
   CartesianGrid,
-  Cell,
-  ComposedChart,
   Line,
   LineChart,
   XAxis,
   YAxis,
 } from "recharts"
+import { buildAnalyticsChartPoints, type AnalyticsChartPoint } from "@/lib/analytics-chart"
 import {
   ApiError,
   facebookConnectUrl,
@@ -60,23 +57,13 @@ const metrics: { key: AnalyticsMetric; label: string }[] = [
 ]
 
 const growthChartConfig = {
-  netChange: { label: "Net change", color: "var(--chart-2)" },
   followers: { label: "Followers", color: "var(--primary)" },
 } satisfies ChartConfig
 
-const viewsChartConfig = {
-  views: { label: "Views", color: "var(--primary)" },
-} satisfies ChartConfig
-
-type ChartPoint = {
-  date: string
-  netChange: number | null
-  followers: number | null
-  views: number | null
-}
-
 function isMetricUnavailable(overview: AnalyticsOverview, key: AnalyticsMetric) {
-  return overview.unavailable?.includes(key) ?? false
+  return overview.unavailable.some((item) => typeof item === "string"
+    ? item === key
+    : item.key === key)
 }
 
 function metricValue(overview: AnalyticsOverview, key: AnalyticsMetric) {
@@ -85,37 +72,6 @@ function metricValue(overview: AnalyticsOverview, key: AnalyticsMetric) {
   return value === null || value === undefined || !Number.isFinite(value)
     ? "n/a"
     : new Intl.NumberFormat().format(value)
-}
-
-function makeChartPoints(overview: AnalyticsOverview): ChartPoint[] {
-  const dates = new Set<string>()
-  for (const key of ["follows", "unfollows", "followers_total", "views"] as const) {
-    for (const point of overview.series?.[key] ?? []) dates.add(point.date)
-  }
-
-  const valuesByKey = (key: AnalyticsMetric) => new Map(
-    (overview.series?.[key] ?? []).map(({ date, value }) => [date, value])
-  )
-  const follows = valuesByKey("follows")
-  const unfollows = valuesByKey("unfollows")
-  const followers = valuesByKey("followers_total")
-  const views = valuesByKey("views")
-  const canCalculateGrowth = !isMetricUnavailable(overview, "follows")
-    && !isMetricUnavailable(overview, "unfollows")
-  const hasFollowers = !isMetricUnavailable(overview, "followers_total")
-
-  return [...dates].sort().map((date) => {
-    const followed = follows.get(date)
-    const unfollowed = unfollows.get(date)
-    return {
-      date,
-      netChange: canCalculateGrowth && followed != null && unfollowed != null
-        ? followed - unfollowed
-        : null,
-      followers: hasFollowers ? followers.get(date) ?? null : null,
-      views: isMetricUnavailable(overview, "views") ? null : views.get(date) ?? null,
-    }
-  })
 }
 
 function displayDate(value: string) {
@@ -138,10 +94,7 @@ function LoadingSkeleton() {
           <div key={metric.key} className="h-28 animate-pulse rounded-2xl bg-muted" />
         ))}
       </div>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <div className="h-80 animate-pulse rounded-2xl bg-muted" />
-        <div className="h-80 animate-pulse rounded-2xl bg-muted" />
-      </div>
+      <div className="h-80 animate-pulse rounded-2xl bg-muted" />
       <div className="h-64 animate-pulse rounded-2xl bg-muted" />
     </div>
   )
@@ -228,22 +181,32 @@ function AnalyticsContent() {
   }, [accountId, days, requestKey])
 
   const selectedAccount = accounts.find((account) => account.id === accountId) ?? null
-  const chartPoints = useMemo(() => overview ? makeChartPoints(overview) : [], [overview])
+  const chartPoints = useMemo(() => overview ? buildAnalyticsChartPoints(overview) : [], [overview])
+  const followerTotals = chartPoints.flatMap((point) => point.followers === null ? [] : [point.followers])
+  const hasFollowerHistory = followerTotals.length > 1
+  const minFollowerTotal = Math.min(0, ...followerTotals)
+  const maxFollowerTotal = Math.max(0, ...followerTotals)
+  const followerDomain: [number, number] = [
+    minFollowerTotal,
+    maxFollowerTotal + 1,
+  ]
+  const followerTicks = Array.from(
+    { length: Math.floor(followerDomain[1]) - Math.ceil(followerDomain[0]) + 1 },
+    (_, index) => Math.ceil(followerDomain[0]) + index
+  )
   const hasAnalytics = overview !== null && (
     metrics.some(({ key }) => !isMetricUnavailable(overview, key)
       && overview.totals?.[key] !== null
       && overview.totals?.[key] !== undefined)
-    || chartPoints.some((point) => point.netChange !== null || point.followers !== null || point.views !== null)
+    || chartPoints.some((point) => point.netChange !== null || point.followers !== null)
   )
-  const currentError = overviewError ?? postsError
-  const currentErrorCode = errorCode(overviewError) ?? errorCode(postsError)
 
   function retry() {
     setRetryAnalytics((count) => count + 1)
   }
 
   return (
-    <main className="min-h-[70vh] space-y-6 p-5 sm:p-8">
+    <main className="min-h-[70vh] min-w-0 space-y-6 p-3 sm:p-8">
       <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
@@ -325,9 +288,9 @@ function AnalyticsContent() {
             </div>
           ) : null}
 
-          {currentError ? (
+          {overviewError ? (
             <AnalyticsError
-              code={currentErrorCode}
+              code={errorCode(overviewError)}
               account={selectedAccount}
               retry={retry}
             />
@@ -356,80 +319,70 @@ function AnalyticsContent() {
                 ))}
               </section>
 
-              <section className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-                <Card>
+              <section className="grid min-w-0 gap-5">
+                <Card className="min-w-0 w-full">
                   <CardHeader>
                     <CardTitle>Follower growth</CardTitle>
-                    <CardDescription>Daily net change and total followers, when available.</CardDescription>
+                    <CardDescription>Total followers over time.</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {chartPoints.some((point) => point.netChange !== null || point.followers !== null) ? (
-                      <ChartContainer config={growthChartConfig} className="aspect-auto h-64 w-full">
-                        <ComposedChart data={chartPoints} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
-                          <CartesianGrid vertical={false} />
-                          <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={displayDate} />
-                          <YAxis yAxisId="growth" tickLine={false} axisLine={false} width={34} />
-                          <YAxis yAxisId="total" orientation="right" tickLine={false} axisLine={false} width={38} />
-                          <ChartTooltip content={<ChartTooltipContent labelFormatter={(value) => displayDate(String(value))} />} />
-                          <Bar yAxisId="growth" dataKey="netChange" radius={[4, 4, 0, 0]}>
-                            {chartPoints.map((point) => (
-                              <Cell
-                                key={point.date}
-                                fill={point.netChange === null
-                                  ? "var(--chart-3)"
-                                  : point.netChange >= 0
-                                    ? "#16834f"
-                                    : "#b42318"}
-                              />
-                            ))}
-                          </Bar>
-                          {chartPoints.some((point) => point.followers !== null) ? (
-                            <Line
-                              yAxisId="total"
-                              type="monotone"
-                              dataKey="followers"
-                              stroke="var(--color-followers)"
-                              strokeWidth={2}
-                              dot={false}
-                              connectNulls={false}
-                            />
-                          ) : null}
-                        </ComposedChart>
-                      </ChartContainer>
-                    ) : (
-                      <ChartEmptyState />
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Views over time</CardTitle>
-                    <CardDescription>Daily page views for the selected range.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {chartPoints.some((point) => point.views !== null) ? (
-                      <ChartContainer config={viewsChartConfig} className="aspect-auto h-64 w-full">
+                    {hasFollowerHistory ? (
+                      <ChartContainer config={growthChartConfig} className="aspect-auto h-80 w-full min-w-0">
                         <LineChart data={chartPoints} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                           <CartesianGrid vertical={false} />
                           <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={displayDate} />
-                          <YAxis tickLine={false} axisLine={false} width={34} />
-                          <ChartTooltip content={<ChartTooltipContent labelFormatter={(value) => displayDate(String(value))} />} />
+                          <YAxis
+                            domain={followerDomain}
+                            ticks={followerTicks}
+                            tickLine={false}
+                            axisLine={false}
+                            width={38}
+                            allowDecimals={false}
+                          />
+                          <ChartTooltip
+                            content={({ active, payload, label }) => {
+                              const point = payload?.[0]?.payload as AnalyticsChartPoint | undefined
+                              if (!active || !point) return null
+                              const netChange = point.netChange
+
+                              return (
+                                <div className="grid min-w-32 items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                                  <div className="font-medium">{displayDate(String(label))}</div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Total followers</span>
+                                    <span className="font-mono font-medium tabular-nums">{point.followers}</span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Net change</span>
+                                    <span className="font-mono font-medium tabular-nums">
+                                      {netChange === null
+                                        ? "n/a"
+                                        : `${netChange > 0 ? "+" : ""}${netChange}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            }}
+                          />
                           <Line
                             type="monotone"
-                            dataKey="views"
-                            stroke="var(--color-views)"
+                            dataKey="followers"
+                            stroke="var(--color-followers)"
                             strokeWidth={2}
-                            dot={false}
+                            dot={{ r: 3 }}
                             connectNulls={false}
                           />
                         </LineChart>
                       </ChartContainer>
                     ) : (
-                      <ChartEmptyState />
+                      <ChartEmptyState message="No follower total history for this range." />
                     )}
+                    {!hasFollowerHistory ? (
+                      <p className="mt-3 text-xs text-muted-foreground">Follower total history unavailable.</p>
+                    ) : null}
                   </CardContent>
                 </Card>
+
               </section>
             </>
           ) : null}
@@ -443,10 +396,12 @@ function AnalyticsContent() {
               {analyticsLoading ? (
                 <div role="status" className="h-36 animate-pulse rounded-xl bg-muted" />
               ) : postsError ? (
-                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                  <span>Unable to load recent posts.</span>
-                  <Button type="button" size="sm" variant="outline" onClick={retry}>Retry</Button>
-                </div>
+                <PostsError
+                  code={errorCode(postsError)}
+                  account={selectedAccount}
+                  overviewAvailable={overview !== null}
+                  retry={retry}
+                />
               ) : posts.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">No recent posts found.</p>
               ) : (
@@ -494,6 +449,43 @@ function AnalyticsContent() {
   )
 }
 
+function PostsError({
+  code,
+  account,
+  overviewAvailable,
+  retry,
+}: {
+  code?: string
+  account: Account
+  overviewAvailable: boolean
+  retry: () => void
+}) {
+  const needsReconnect = code === "missing_permission" || code === "needs_reauth"
+  const message = code === "missing_permission"
+    ? "Recent post insights need an additional Facebook permission. Reconnect this account to approve it."
+    : code === "needs_reauth"
+      ? "Recent posts require this Facebook account to be reconnected."
+      : code === "facebook_unavailable"
+        ? overviewAvailable
+          ? "Recent posts are temporarily unavailable. Your overview analytics loaded successfully."
+          : "Facebook could not load recent posts. Try again shortly."
+        : "Unable to load recent posts."
+
+  return (
+    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm">
+      <span>{message}</span>
+      <div className="flex gap-2">
+        {needsReconnect ? (
+          <a href={facebookConnectUrl(account.id)} className={buttonVariants({ size: "sm", variant: "outline" })}>
+            Reconnect
+          </a>
+        ) : null}
+        <Button type="button" size="sm" variant="outline" onClick={retry}>Retry</Button>
+      </div>
+    </div>
+  )
+}
+
 function AnalyticsError({
   code,
   account,
@@ -527,10 +519,10 @@ function AnalyticsError({
   )
 }
 
-function ChartEmptyState() {
+function ChartEmptyState({ message }: { message: string }) {
   return (
     <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border text-center text-sm text-muted-foreground">
-      No data available for this range.
+      {message}
     </div>
   )
 }

@@ -33,9 +33,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   if (!showSidebar) return <>{children}</>
 
   return (
-    <div className="relative min-h-[70vh] pl-16">
+    <div className="flex min-h-[70vh]">
       <AppSidebar />
-      {children}
+      <div className="min-w-0 flex-1">
+        {children}
+      </div>
     </div>
   )
 }
@@ -71,8 +73,7 @@ function AppSidebar() {
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
       aria-label="Application sidebar"
-      className={`fixed top-16 z-40 flex h-[calc(100dvh-4rem)] flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-[width] duration-200 ease-out ${expanded ? "w-64" : "w-16"}`}
-      style={{ left: "max(0px, calc((100vw - 75rem) / 2))" }}
+      className={`sticky top-16 flex h-[calc(100dvh-4rem)] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-[width] duration-200 ease-out motion-reduce:transition-none ${expanded ? "w-64 max-sm:w-32" : "w-16"}`}
     >
       <div className="flex h-14 shrink-0 items-center px-2">
         <button
@@ -85,7 +86,7 @@ function AppSidebar() {
         >
           <HugeiconsIcon icon={SidebarLeftIcon} strokeWidth={2} className="size-5" aria-hidden="true" />
         </button>
-        <span className={`overflow-hidden whitespace-nowrap pl-3 text-sm font-medium transition-opacity duration-150 ${expanded ? "opacity-100" : "opacity-0"}`}>
+        <span className={`overflow-hidden whitespace-nowrap pl-3 text-sm font-medium transition-opacity duration-150 motion-reduce:transition-none ${expanded ? "opacity-100" : "opacity-0"}`}>
           Workspace
         </span>
       </div>
@@ -141,7 +142,7 @@ function SidebarLink({
       className={`flex h-10 shrink-0 items-center rounded-lg px-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${active ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground" : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
     >
       <HugeiconsIcon icon={icon} strokeWidth={2} className="size-5 shrink-0" aria-hidden="true" />
-      <span className={`overflow-hidden whitespace-nowrap pl-3 transition-opacity duration-150 ${expanded ? "opacity-100" : "opacity-0"}`}>
+      <span className={`overflow-hidden whitespace-nowrap pl-3 transition-opacity duration-150 motion-reduce:transition-none ${expanded ? "opacity-100" : "opacity-0"}`}>
         {label}
       </span>
     </Link>
