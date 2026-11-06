@@ -2,17 +2,20 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { ChevronDown, Menu, Moon, Sun, X } from "lucide-react"
+import { HugeiconsIcon } from "@hugeicons/react"
 import FullBleedLine from "@/components/FullBleedLine"
 import { useAuth } from "@/components/AuthProvider"
 import { useBilling } from "@/components/BillingProvider"
+import { workspaceNavigation } from "@/lib/workspace-navigation"
 import type { Profile } from "@/lib/api-types"
 import { content } from "@/lib/content"
 import { getProfile, logout } from "@/lib/api"
 
 export default function Navbar() {
   const { user, isLoading, clearUser } = useAuth()
+  const pathname = usePathname()
   const router = useRouter()
   const { billing, isLoading: isBillingLoading } = useBilling()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -22,6 +25,17 @@ export default function Navbar() {
     profile: Profile | null
     failed: boolean
   } | null>(null)
+
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    function handleEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false)
+    }
+
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [mobileOpen])
 
   useEffect(() => {
     if (!user) return
@@ -149,28 +163,54 @@ export default function Navbar() {
       </div>
 
       {mobileOpen ? (
-        <nav id="mobile-menu" aria-label="Mobile navigation" className="absolute left-0 right-0 top-full border-y border-[var(--border-color)] bg-[var(--page-background)] p-4 xl:hidden">
+        <>
+          <button
+            type="button"
+            aria-label="Dismiss navigation overlay"
+            onClick={() => setMobileOpen(false)}
+            className="absolute inset-x-0 top-16 z-40 h-[calc(100dvh-4rem)] bg-black/30 xl:hidden"
+          />
+          <nav
+            id="mobile-menu"
+            aria-label="Mobile navigation"
+            className="absolute left-0 right-0 top-full z-50 max-h-[calc(100dvh-4rem)] overflow-y-auto border-y border-[var(--border-color)] bg-[var(--page-background)] p-4 shadow-lg xl:hidden"
+          >
           <div className="flex flex-col gap-1">
+            {user ? (
+              <div className="mb-2 flex flex-col gap-1 border-b border-[var(--border-color)] pb-3 md:hidden">
+                {workspaceNavigation
+                  .filter((item) => !item.adminOnly || user.is_staff || user.is_superuser)
+                  .map((item) => {
+                    const active = pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        aria-current={active ? "page" : undefined}
+                        className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${active
+                          ? "bg-[var(--surface)] font-medium text-[var(--primary-text)]"
+                          : "text-[var(--secondary-text)] hover:bg-[var(--surface)] hover:text-[var(--accent)]"}`}
+                      >
+                        <HugeiconsIcon icon={item.icon} strokeWidth={2} className="size-5 shrink-0" aria-hidden="true" />
+                        <span className="whitespace-nowrap">{item.label}</span>
+                      </Link>
+                    )
+                  })}
+              </div>
+            ) : null}
             <Link href="/#features" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">Features</Link>
             <Link href="/pricing" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">Pricing</Link>
             <Link href="/#faq" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">FAQ</Link>
-            {!isLoading ? (
+            {!isLoading && !user ? (
               <div className="mt-2 flex gap-4 border-t border-[var(--border-color)] pt-3">
-                {user ? (
-                  <>
-                    {user.is_staff ? <Link href="/admin" onClick={() => setMobileOpen(false)} className="px-3 py-2 text-sm text-[var(--secondary-text)]">Admin</Link> : null}
-                    <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)]">Dashboard</Link>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/login" onClick={() => setMobileOpen(false)} className="px-3 py-2 text-sm text-[var(--secondary-text)]">Log in</Link>
-                    <Link href="/signup" onClick={() => setMobileOpen(false)} className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)]">Get started</Link>
-                  </>
-                )}
+                <Link href="/login" onClick={() => setMobileOpen(false)} className="px-3 py-2 text-sm text-[var(--secondary-text)]">Log in</Link>
+                <Link href="/signup" onClick={() => setMobileOpen(false)} className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)]">Get started</Link>
               </div>
             ) : null}
           </div>
-        </nav>
+          </nav>
+        </>
       ) : null}
       <FullBleedLine className="bottom-0 opacity-50" />
     </header>

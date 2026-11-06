@@ -369,7 +369,8 @@ function AnalyticsContent() {
                             dataKey="followers"
                             stroke="var(--color-followers)"
                             strokeWidth={2}
-                            dot={{ r: 3 }}
+                            dot={false}
+                            activeDot={{ r: 4 }}
                             connectNulls={false}
                           />
                         </LineChart>
