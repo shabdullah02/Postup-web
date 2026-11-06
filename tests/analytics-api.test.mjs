@@ -132,3 +132,18 @@ test("missing daily values remain null and prevent follower-history reconstructi
   assert.equal(points[3].netChange, null)
   assert.ok(points.every(({ followers }) => followers === null))
 })
+
+test("backend net follower growth series is used for daily bars", () => {
+  const overview = overviewWithSeries({
+    follows: [0, 0, 0, 0, 0, 0, 2],
+    unfollows: [0, 0, 0, 0, 0, 0, 0],
+    followersTotal: [0, 0, 0, 0, 0, 0, 2],
+  })
+  overview.series.net_follower_growth = dates.map((date, index) => ({
+    date,
+    value: index === 4 ? -1 : index === 6 ? 3 : 0,
+  }))
+
+  const points = buildAnalyticsChartPoints(overview)
+  assert.deepEqual(points.map(({ netChange }) => netChange), [0, 0, 0, 0, -1, 0, 3])
+})

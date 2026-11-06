@@ -21,27 +21,50 @@ function numericValue(value: number | null | undefined): value is number {
 }
 
 export function buildAnalyticsChartPoints(overview: AnalyticsOverview): AnalyticsChartPoint[] {
-  const seriesKeys: AnalyticsMetric[] = ["follows", "unfollows", "followers_total"]
-  const series = new Map(seriesKeys.map((key) => [key, metricSeries(overview, key)]))
-  const dates = new Set(seriesKeys.flatMap((key) => series.get(key)?.map(({ date }) => date) ?? []))
-  const valuesByKey = new Map(seriesKeys.map((key) => [
-    key,
-    new Map(series.get(key)?.map(({ date, value }) => [date, value]) ?? []),
-  ]))
+  const series = {
+    follows: metricSeries(overview, "follows"),
+    unfollows: metricSeries(overview, "unfollows"),
+    followers_total: metricSeries(overview, "followers_total"),
+    net_follower_growth: overview.series.net_follower_growth ?? [],
+  }
+  const dates = new Set(Object.values(series).flatMap((items) => items?.map(({ date }) => date) ?? []))
+  const toMap = (items: typeof series.follows) => new Map(
+    items?.map(({ date, value }) => [date, value] as const) ?? []
+  )
+  const valuesByKey = {
+    follows: toMap(series.follows),
+    unfollows: toMap(series.unfollows),
+    followers_total: toMap(series.followers_total),
+    net_follower_growth: toMap(series.net_follower_growth),
+  }
   const canCalculateGrowth = !isUnavailable(overview, "follows")
     && !isUnavailable(overview, "unfollows")
-  const follows = valuesByKey.get("follows")!
-  const unfollows = valuesByKey.get("unfollows")!
-  const totals = valuesByKey.get("followers_total")!
+  const follows = valuesByKey.follows
+  const unfollows = valuesByKey.unfollows
+  const totals = valuesByKey.followers_total
+  const backendGrowth = valuesByKey.net_follower_growth
   const points = [...dates].sort().map((date) => {
     const followed = follows.get(date)
     const unfollowed = unfollows.get(date)
+    const previousDate = new Date(`${date}T00:00:00Z`)
+    previousDate.setUTCDate(previousDate.getUTCDate() - 1)
+    const previousTotal = totals.get(previousDate.toISOString().slice(0, 10))
+    const total = totals.get(date)
+    const dailyGrowth = backendGrowth.get(date)
+    const netChange = numericValue(dailyGrowth)
+      ? dailyGrowth
+      : canCalculateGrowth
+        ? numericValue(followed) && numericValue(unfollowed)
+          ? followed - unfollowed
+          : null
+        : numericValue(total) && numericValue(previousTotal)
+          ? total - previousTotal
+          : null
+
     return {
       date,
-      netChange: canCalculateGrowth && numericValue(followed) && numericValue(unfollowed)
-        ? followed - unfollowed
-        : null,
-      followers: numericValue(totals.get(date)) ? totals.get(date)! : null,
+      netChange,
+      followers: numericValue(total) ? total : null,
     }
   })
 

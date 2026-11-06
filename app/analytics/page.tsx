@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { AuthGate } from "@/components/AuthGate"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -24,9 +25,13 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import {
+  Bar,
   CartesianGrid,
+  Cell,
+  ComposedChart,
   Line,
-  LineChart,
+  ReferenceArea,
+  ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts"
@@ -57,7 +62,8 @@ const metrics: { key: AnalyticsMetric; label: string }[] = [
 ]
 
 const growthChartConfig = {
-  followers: { label: "Followers", color: "var(--primary)" },
+  followers: { label: "Followers", color: "#252b5a" },
+  netChange: { label: "Net change", color: "var(--muted-foreground)" },
 } satisfies ChartConfig
 
 function isMetricUnavailable(overview: AnalyticsOverview, key: AnalyticsMetric) {
@@ -79,6 +85,28 @@ function displayDate(value: string) {
   return Number.isNaN(date.getTime())
     ? value
     : date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+}
+
+function chartDateLabel(value: string, points: AnalyticsChartPoint[]) {
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+
+  const index = points.findIndex((point) => point.date === value)
+  const previousDate = index > 0
+    ? new Date(`${points[index - 1].date.slice(0, 10)}T00:00:00`)
+    : null
+  const monthChanged = previousDate === null || previousDate.getMonth() !== date.getMonth()
+  return monthChanged || date.getDate() === 1
+    ? date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    : String(date.getDate())
+}
+
+function rangeDayCount(since: string, until: string) {
+  const start = Date.parse(`${since.slice(0, 10)}T00:00:00Z`)
+  const end = Date.parse(`${until.slice(0, 10)}T00:00:00Z`)
+  return Number.isFinite(start) && Number.isFinite(end)
+    ? Math.floor((end - start) / 86_400_000) + 1
+    : null
 }
 
 function errorCode(error: unknown) {
@@ -182,18 +210,14 @@ function AnalyticsContent() {
 
   const selectedAccount = accounts.find((account) => account.id === accountId) ?? null
   const chartPoints = useMemo(() => overview ? buildAnalyticsChartPoints(overview) : [], [overview])
-  const followerTotals = chartPoints.flatMap((point) => point.followers === null ? [] : [point.followers])
-  const hasFollowerHistory = followerTotals.length > 1
-  const minFollowerTotal = Math.min(0, ...followerTotals)
-  const maxFollowerTotal = Math.max(0, ...followerTotals)
-  const followerDomain: [number, number] = [
-    minFollowerTotal,
-    maxFollowerTotal + 1,
-  ]
-  const followerTicks = Array.from(
-    { length: Math.floor(followerDomain[1]) - Math.ceil(followerDomain[0]) + 1 },
-    (_, index) => Math.ceil(followerDomain[0]) + index
-  )
+  const actualRangeDays = overview && typeof overview.range === "object"
+    ? rangeDayCount(overview.range.since, overview.range.until)
+    : null
+  const limitedRange = selectedAccount?.provider === "facebook"
+    && actualRangeDays !== null
+    && actualRangeDays < days
+    ? { actual: actualRangeDays, requested: days }
+    : null
   const hasAnalytics = overview !== null && (
     metrics.some(({ key }) => !isMetricUnavailable(overview, key)
       && overview.totals?.[key] !== null
@@ -320,70 +344,7 @@ function AnalyticsContent() {
               </section>
 
               <section className="grid min-w-0 gap-5">
-                <Card className="min-w-0 w-full">
-                  <CardHeader>
-                    <CardTitle>Follower growth</CardTitle>
-                    <CardDescription>Total followers over time.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {hasFollowerHistory ? (
-                      <ChartContainer config={growthChartConfig} className="aspect-auto h-80 w-full min-w-0">
-                        <LineChart data={chartPoints} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
-                          <CartesianGrid vertical={false} />
-                          <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={displayDate} />
-                          <YAxis
-                            domain={followerDomain}
-                            ticks={followerTicks}
-                            tickLine={false}
-                            axisLine={false}
-                            width={38}
-                            allowDecimals={false}
-                          />
-                          <ChartTooltip
-                            content={({ active, payload, label }) => {
-                              const point = payload?.[0]?.payload as AnalyticsChartPoint | undefined
-                              if (!active || !point) return null
-                              const netChange = point.netChange
-
-                              return (
-                                <div className="grid min-w-32 items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
-                                  <div className="font-medium">{displayDate(String(label))}</div>
-                                  <div className="flex justify-between gap-4">
-                                    <span className="text-muted-foreground">Total followers</span>
-                                    <span className="font-mono font-medium tabular-nums">{point.followers}</span>
-                                  </div>
-                                  <div className="flex justify-between gap-4">
-                                    <span className="text-muted-foreground">Net change</span>
-                                    <span className="font-mono font-medium tabular-nums">
-                                      {netChange === null
-                                        ? "n/a"
-                                        : `${netChange > 0 ? "+" : ""}${netChange}`}
-                                    </span>
-                                  </div>
-                                </div>
-                              )
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="followers"
-                            stroke="var(--color-followers)"
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={{ r: 4 }}
-                            connectNulls={false}
-                          />
-                        </LineChart>
-                      </ChartContainer>
-                    ) : (
-                      <ChartEmptyState message="No follower total history for this range." />
-                    )}
-                    {!hasFollowerHistory ? (
-                      <p className="mt-3 text-xs text-muted-foreground">Follower total history unavailable.</p>
-                    ) : null}
-                  </CardContent>
-                </Card>
-
+                <FollowerGrowthCard points={chartPoints} limitedRange={limitedRange} />
               </section>
             </>
           ) : null}
@@ -525,5 +486,241 @@ function ChartEmptyState({ message }: { message: string }) {
     <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border text-center text-sm text-muted-foreground">
       {message}
     </div>
+  )
+}
+
+function FollowerGrowthCard({
+  points,
+  limitedRange,
+}: {
+  points: AnalyticsChartPoint[]
+  limitedRange: { actual: number; requested: number } | null
+}) {
+  const [zoomRange, setZoomRange] = useState<[string, string] | null>(null)
+  const [dragRange, setDragRange] = useState<[string, string] | null>(null)
+  const dragStartIndex = useRef<number | null>(null)
+  const visiblePoints = zoomRange
+    ? points.filter(({ date }) => date >= zoomRange[0] && date <= zoomRange[1])
+    : points
+  const totals = visiblePoints.flatMap(({ followers }) => followers === null ? [] : [followers])
+  const netChanges = visiblePoints.flatMap(({ netChange }) => netChange === null ? [] : [netChange])
+  const hasFollowerTotals = totals.length > 0
+  const hasData = visiblePoints.some((point) => point.followers !== null || point.netChange !== null)
+  const minTotal = hasFollowerTotals ? Math.min(...totals) : 0
+  const maxTotal = hasFollowerTotals ? Math.max(...totals) : 0
+  const totalPadding = Math.max(1, (maxTotal - minTotal) * 0.05)
+  const totalDomain: [number, number] = [minTotal - totalPadding, maxTotal + totalPadding]
+  const deltaLimit = Math.max(1, ...netChanges.map(Math.abs))
+  const deltaDomain: [number, number] = [-deltaLimit, deltaLimit]
+  const totalTicks = hasFollowerTotals
+    ? Array.from(
+      { length: Math.floor(totalDomain[1]) - Math.ceil(totalDomain[0]) + 1 },
+      (_, index) => Math.ceil(totalDomain[0]) + index
+    )
+    : []
+  const pointIndexFromPointer = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const plotStart = hasFollowerTotals ? 44 : 0
+    const plotWidth = rect.width - plotStart - 40
+    if (plotWidth <= 0 || visiblePoints.length === 0) return -1
+
+    const position = Math.min(
+      1,
+      Math.max(0, (event.clientX - rect.left - plotStart) / plotWidth)
+    )
+    return Math.round(position * (visiblePoints.length - 1))
+  }
+
+  function startDrag(event: ReactMouseEvent<HTMLDivElement>) {
+    if (visiblePoints.length < 2) return
+    const index = pointIndexFromPointer(event)
+    if (index < 0) return
+    dragStartIndex.current = index
+    setDragRange([visiblePoints[index].date, visiblePoints[index].date])
+  }
+
+  function moveDrag(event: ReactMouseEvent<HTMLDivElement>) {
+    if (dragStartIndex.current === null) return
+    const index = pointIndexFromPointer(event)
+    if (index < 0) return
+    const start = visiblePoints[dragStartIndex.current].date
+    const end = visiblePoints[index].date
+    setDragRange(start <= end ? [start, end] : [end, start])
+  }
+
+  function finishDrag(event: ReactMouseEvent<HTMLDivElement>) {
+    const startIndex = dragStartIndex.current
+    const endIndex = pointIndexFromPointer(event)
+    if (startIndex !== null && endIndex >= 0 && Math.abs(endIndex - startIndex) >= 1) {
+      setZoomRange([
+        visiblePoints[Math.min(startIndex, endIndex)].date,
+        visiblePoints[Math.max(startIndex, endIndex)].date,
+      ])
+    }
+    dragStartIndex.current = null
+    setDragRange(null)
+  }
+
+  return (
+    <Card className="min-w-0 w-full border border-border shadow-none ring-0">
+      <CardHeader>
+        <CardTitle>Follower growth</CardTitle>
+        {limitedRange ? (
+          <CardDescription className="text-amber-700 dark:text-amber-400">
+            Facebook returned {limitedRange.actual} days of data for the selected {limitedRange.requested}-day range.
+          </CardDescription>
+        ) : null}
+        {zoomRange ? (
+          <CardAction>
+            <Button type="button" variant="outline" size="sm" onClick={() => setZoomRange(null)}>
+              Reset zoom
+            </Button>
+          </CardAction>
+        ) : null}
+      </CardHeader>
+      <CardContent className="min-w-0">
+        {hasData ? (
+          <>
+            <ChartContainer
+              config={growthChartConfig}
+              className="aspect-auto h-[280px] w-full min-w-0 sm:h-[400px]"
+              onMouseDown={startDrag}
+              onMouseMove={moveDrag}
+              onMouseUp={finishDrag}
+              onMouseLeave={(event) => {
+                if (dragStartIndex.current !== null) finishDrag(event)
+              }}
+            >
+              <ComposedChart
+                data={visiblePoints}
+                margin={{ left: 0, right: 0, top: 12, bottom: 4 }}
+                onDoubleClick={() => {
+                  setZoomRange(null)
+                  setDragRange(null)
+                }}
+              >
+                <CartesianGrid
+                  horizontal
+                  vertical
+                  stroke="var(--border)"
+                  strokeOpacity={0.45}
+                  strokeDasharray="3 3"
+                />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  minTickGap={18}
+                  interval="preserveStartEnd"
+                  tickFormatter={(value) => chartDateLabel(String(value), visiblePoints)}
+                />
+                {hasFollowerTotals ? (
+                  <YAxis
+                    yAxisId="total"
+                    domain={totalDomain}
+                    ticks={totalTicks}
+                    tickLine={false}
+                    axisLine={false}
+                    width={44}
+                    allowDecimals={false}
+                  />
+                ) : null}
+                <YAxis
+                  yAxisId="delta"
+                  orientation="right"
+                  domain={deltaDomain}
+                  tickLine={false}
+                  axisLine={false}
+                  width={40}
+                  allowDecimals={false}
+                />
+                <ChartTooltip
+                  content={({ active, payload, label }) => {
+                    const point = payload?.[0]?.payload as AnalyticsChartPoint | undefined
+                    if (!active || !point) return null
+
+                    return (
+                      <div className="grid min-w-36 gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                        <div className="font-medium">{displayDate(String(label))}</div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Net change</span>
+                          <span className={`font-mono font-medium tabular-nums ${point.netChange === null
+                            ? "text-muted-foreground"
+                            : point.netChange > 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : point.netChange < 0
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-muted-foreground"}`}>
+                            {point.netChange === null
+                              ? "n/a"
+                              : `${point.netChange > 0 ? "+" : ""}${point.netChange}`}
+                          </span>
+                        </div>
+                        {point.followers !== null ? (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Followers</span>
+                            <span className="font-mono font-medium tabular-nums">{point.followers}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  }}
+                />
+                <ReferenceLine y={0} yAxisId="delta" stroke="var(--border)" />
+                <Bar
+                  yAxisId="delta"
+                  dataKey="netChange"
+                  barSize={5}
+                  radius={[2, 2, 0, 0]}
+                  isAnimationActive={false}
+                >
+                  {visiblePoints.map((point) => (
+                    <Cell
+                      key={point.date}
+                      fill={point.netChange === null
+                        ? "transparent"
+                        : point.netChange > 0
+                          ? "#16834f"
+                          : point.netChange < 0
+                            ? "#b42318"
+                            : "transparent"}
+                    />
+                  ))}
+                </Bar>
+                {hasFollowerTotals ? (
+                  <Line
+                    yAxisId="total"
+                    type="monotone"
+                    dataKey="followers"
+                    stroke="var(--color-followers)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                  />
+                ) : null}
+                {dragRange && dragRange[0] !== dragRange[1] ? (
+                  <ReferenceArea
+                    x1={dragRange[0]}
+                    x2={dragRange[1]}
+                    fill="#6366f1"
+                    fillOpacity={0.16}
+                    stroke="#6366f1"
+                    strokeOpacity={0.35}
+                  />
+                ) : null}
+              </ComposedChart>
+            </ChartContainer>
+            <div className="mt-2 hidden justify-end text-xs text-muted-foreground sm:flex">
+              You can drag the chart to zoom.
+            </div>
+          </>
+        ) : (
+          <ChartEmptyState message="No follower data available for this range." />
+        )}
+      </CardContent>
+    </Card>
   )
 }

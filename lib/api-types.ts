@@ -93,10 +93,14 @@ export type SocialAccount = {
 
 export type AnalyticsMetric = "views" | "reach" | "engagements" | "follows" | "unfollows" | "followers_total"
 
+export type AnalyticsSeriesPoint = { date: string; value: number | null }
+
 export type AnalyticsOverview = {
   range: string | { since: string; until: string; days: number }
   totals: Record<AnalyticsMetric, number | null>
-  series: Partial<Record<AnalyticsMetric, { date: string; value: number | null }[] | null>>
+  series: Partial<Record<AnalyticsMetric, AnalyticsSeriesPoint[] | null>> & {
+    net_follower_growth?: AnalyticsSeriesPoint[] | null
+  }
   unavailable: (AnalyticsMetric | { key: string; metric: string; code: string })[]
 }
 
