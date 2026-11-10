@@ -1,0 +1,53 @@
+@keyframes hero-tile-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes hero-tile-lift-a {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  35% {
+    transform: translateY(-10px) rotate(-1.2deg) scale(1.015);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes hero-tile-lift-b {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  35% {
+    transform: translateY(-10px) rotate(-1.2deg) scale(1.015);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+.bob {
+  animation: hero-tile-bob 6s ease-in-out infinite;
+}
+
+.liftA {
+  animation: hero-tile-lift-a 500ms ease-out;
+}
+
+.liftB {
+  animation: hero-tile-lift-b 500ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bob,
+  .liftA,
+  .liftB {
+    animation: none;
+  }
+}
