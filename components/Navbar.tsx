@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ChevronDown, Menu, Moon, Sun, X } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import FullBleedLine from "@/components/FullBleedLine"
 import { useAuth } from "@/components/AuthProvider"
 import { useBilling } from "@/components/BillingProvider"
 import { workspaceNavigation } from "@/lib/workspace-navigation"
@@ -76,8 +75,8 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[color-mix(in_srgb,var(--border-color)_50%,transparent)] bg-[rgba(255,255,255,0.6)] backdrop-blur-[12px] [-webkit-backdrop-filter:blur(12px)] dark:bg-[rgba(25,25,25,0.6)]">
-      <div className="flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-50 border-b border-border bg-[rgba(255,255,255,0.6)] backdrop-blur-[12px] [-webkit-backdrop-filter:blur(12px)] dark:bg-[rgba(25,25,25,0.6)]">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
         <div className="flex min-w-0 items-center gap-8 xl:gap-12">
           <Link href="/" aria-label={`${content.appName} home`} className="flex shrink-0 items-center">
             <span className="text-base font-semibold text-[var(--primary-text)]">{content.appName}</span>
@@ -212,7 +211,6 @@ export default function Navbar() {
           </nav>
         </>
       ) : null}
-      <FullBleedLine className="bottom-0 opacity-50" />
     </header>
   )
 }
