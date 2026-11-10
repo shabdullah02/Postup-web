@@ -49,7 +49,7 @@ export default function Hero() {
       aria-labelledby="landing-hero-title"
       className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28"
     >
-      <div className="mx-auto grid max-w-7xl items-center gap-16 lg:grid-cols-2 lg:gap-10">
+      <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_500px]">
         <div className="min-w-0 max-w-3xl">
           <h1
             id="landing-hero-title"
@@ -85,7 +85,7 @@ export default function Hero() {
           <p className="sr-only">{supportLine}</p>
         </div>
 
-        <div className="relative isolate flex min-w-0 justify-center lg:justify-end">
+        <div className="relative isolate mt-4 flex min-w-0 items-center justify-center lg:mt-0">
           <GhostTiles />
           <PlatformTile />
         </div>

@@ -1,13 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { platforms, type Platform } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import styles from "./hero-tile.module.css"
 
 const ROTATE_MS = 3500
-const PILL_PAUSE_MS = 8000
 
 const TOP_FACE = "M220 54 410 164 220 274 30 164Z"
 const LEFT_FACE = "M30 164 220 274 220 318 30 208Z"
@@ -55,12 +54,6 @@ export default function PlatformTile() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [hovering, setHovering] = useState(false)
   const [tabHidden, setTabHidden] = useState(false)
-  const pillPausedRef = useRef(false)
-  const pillPauseTimerRef = useRef<number | undefined>(undefined)
-
-  useEffect(() => {
-    return () => window.clearTimeout(pillPauseTimerRef.current)
-  }, [])
 
   useEffect(() => {
     function handleVisibilityChange() {
@@ -76,29 +69,21 @@ export default function PlatformTile() {
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
     const timer = window.setInterval(() => {
-      if (reducedMotion.matches || pillPausedRef.current) return
+      if (reducedMotion.matches) return
       setActiveIndex((index) => (index + 1) % platforms.length)
     }, ROTATE_MS)
 
     return () => window.clearInterval(timer)
   }, [hovering, tabHidden])
 
-  function selectPlatform(index: number) {
-    setActiveIndex(index)
-    pillPausedRef.current = true
-    window.clearTimeout(pillPauseTimerRef.current)
-    pillPauseTimerRef.current = window.setTimeout(() => {
-      pillPausedRef.current = false
-    }, PILL_PAUSE_MS)
-  }
-
   return (
     <div
-      className="relative z-10 w-full max-w-[460px] lg:ml-auto"
+      aria-hidden="true"
+      className="relative z-10 w-[70%] max-w-[520px] lg:w-full lg:max-w-[500px]"
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-      <div className="relative mx-auto aspect-[440/340] w-[78%] max-w-[440px] sm:w-[70%] lg:mx-0 lg:w-full">
+      <div className="relative mx-auto aspect-[440/340] w-full">
         <div className={cn("absolute inset-0", styles.bob)}>
           <div
             className={cn(
@@ -120,43 +105,6 @@ export default function PlatformTile() {
             ))}
           </div>
         </div>
-      </div>
-
-      <div
-        role="group"
-        aria-label="Platform preview"
-        className="mt-6 flex flex-wrap justify-center gap-2 lg:justify-end"
-      >
-        {platforms.map((platform, index) => {
-          const active = index === activeIndex
-          return (
-            <button
-              key={platform.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => selectPlatform(index)}
-              className={cn(
-                "inline-flex min-h-9 items-center gap-2 border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <HugeiconsIcon
-                icon={platform.icon}
-                size={14}
-                strokeWidth={1.8}
-                aria-hidden="true"
-              />
-              <span>{platform.name}</span>
-              {platform.soon ? (
-                <span className="border border-current px-1 py-px text-[9px] font-semibold uppercase leading-none tracking-wide">
-                  Soon
-                </span>
-              ) : null}
-            </button>
-          )
-        })}
       </div>
     </div>
   )
