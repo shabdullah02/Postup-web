@@ -158,7 +158,7 @@ export default function MockBillingForm({
             {nameError ? <p id="mock-card-name-error" className="text-sm text-destructive">{nameError}</p> : null}
           </div>
           {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-          {success ? <p role="status" className="text-sm text-green-700 dark:text-green-400">{success}</p> : null}
+          {success ? <p role="status" className="text-sm text-foreground">{success}</p> : null}
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Processing..." : "Upgrade"}
           </Button>

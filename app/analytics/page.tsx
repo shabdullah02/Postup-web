@@ -62,7 +62,7 @@ const metrics: { key: AnalyticsMetric; label: string }[] = [
 ]
 
 const growthChartConfig = {
-  followers: { label: "Followers", color: "#252b5a" },
+  followers: { label: "Followers", color: "var(--chart-2)" },
   netChange: { label: "Net change", color: "var(--muted-foreground)" },
 } satisfies ChartConfig
 
@@ -301,9 +301,9 @@ function AnalyticsContent() {
       ) : selectedAccount ? (
         <>
           {selectedAccount.status === "needs_reauth" ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-muted p-3">
               <div className="flex items-center gap-2 text-sm">
-                <Badge variant="outline" className="border-amber-600/40 text-amber-700 dark:text-amber-400">Needs reauth</Badge>
+                <Badge variant="outline" className="border-primary/40 text-foreground">Needs reauth</Badge>
                 <span>Reconnect this account to restore analytics access.</span>
               </div>
               <a href={facebookConnectUrl(selectedAccount.id)} className={buttonVariants({ size: "sm", variant: "outline" })}>
@@ -386,7 +386,7 @@ function AnalyticsContent() {
                               href={post.permalink_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="line-clamp-2 font-medium hover:text-primary"
+                              className="line-clamp-2 font-medium hover:text-foreground"
                             >
                               {post.message || "View post"}
                             </a>
@@ -502,22 +502,25 @@ function FollowerGrowthCard({
   const visiblePoints = zoomRange
     ? points.filter(({ date }) => date >= zoomRange[0] && date <= zoomRange[1])
     : points
-  const totals = visiblePoints.flatMap(({ followers }) => followers === null ? [] : [followers])
-  const netChanges = visiblePoints.flatMap(({ netChange }) => netChange === null ? [] : [netChange])
-  const hasFollowerTotals = totals.length > 0
+  const { hasFollowerTotals, totalDomain, deltaDomain } = useMemo((): {
+    hasFollowerTotals: boolean
+    totalDomain: [number, number]
+    deltaDomain: [number, number]
+  } => {
+    const totals = visiblePoints.flatMap(({ followers }) => followers === null ? [] : [followers])
+    const bound = Math.max(1, ...visiblePoints.map((point) => Math.abs(point.netChange ?? 0)))
+    const min = totals.length > 0 ? Math.min(...totals) : 0
+    const max = totals.length > 0 ? Math.max(...totals) : 0
+    const mid = (min + max) / 2
+    const half = Math.max((max - min) / 2, bound)
+
+    return {
+      hasFollowerTotals: totals.length > 0,
+      totalDomain: [Math.floor(mid - half), Math.ceil(mid + half)],
+      deltaDomain: [-bound, bound],
+    }
+  }, [visiblePoints])
   const hasData = visiblePoints.some((point) => point.followers !== null || point.netChange !== null)
-  const minTotal = hasFollowerTotals ? Math.min(...totals) : 0
-  const maxTotal = hasFollowerTotals ? Math.max(...totals) : 0
-  const totalPadding = Math.max(1, (maxTotal - minTotal) * 0.05)
-  const totalDomain: [number, number] = [minTotal - totalPadding, maxTotal + totalPadding]
-  const deltaLimit = Math.max(1, ...netChanges.map(Math.abs))
-  const deltaDomain: [number, number] = [-deltaLimit, deltaLimit]
-  const totalTicks = hasFollowerTotals
-    ? Array.from(
-      { length: Math.floor(totalDomain[1]) - Math.ceil(totalDomain[0]) + 1 },
-      (_, index) => Math.ceil(totalDomain[0]) + index
-    )
-    : []
   const pointIndexFromPointer = (event: ReactMouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
     const plotStart = hasFollowerTotals ? 44 : 0
@@ -566,7 +569,7 @@ function FollowerGrowthCard({
       <CardHeader>
         <CardTitle>Follower growth</CardTitle>
         {limitedRange ? (
-          <CardDescription className="text-amber-700 dark:text-amber-400">
+          <CardDescription className="text-muted-foreground">
             Facebook returned {limitedRange.actual} days of data for the selected {limitedRange.requested}-day range.
           </CardDescription>
         ) : null}
@@ -619,7 +622,6 @@ function FollowerGrowthCard({
                   <YAxis
                     yAxisId="total"
                     domain={totalDomain}
-                    ticks={totalTicks}
                     tickLine={false}
                     axisLine={false}
                     width={44}
@@ -648,9 +650,9 @@ function FollowerGrowthCard({
                           <span className={`font-mono font-medium tabular-nums ${point.netChange === null
                             ? "text-muted-foreground"
                             : point.netChange > 0
-                              ? "text-emerald-600 dark:text-emerald-400"
+                              ? "text-green-500"
                               : point.netChange < 0
-                                ? "text-red-600 dark:text-red-400"
+                                ? "text-red-500"
                                 : "text-muted-foreground"}`}>
                             {point.netChange === null
                               ? "n/a"
@@ -671,8 +673,8 @@ function FollowerGrowthCard({
                 <Bar
                   yAxisId="delta"
                   dataKey="netChange"
-                  barSize={5}
-                  radius={[2, 2, 0, 0]}
+                  barSize={12}
+                  radius={[3, 3, 3, 3]}
                   isAnimationActive={false}
                 >
                   {visiblePoints.map((point) => (
@@ -681,9 +683,9 @@ function FollowerGrowthCard({
                       fill={point.netChange === null
                         ? "transparent"
                         : point.netChange > 0
-                          ? "#16834f"
+                          ? "#22c55e"
                           : point.netChange < 0
-                            ? "#b42318"
+                            ? "#ef4444"
                             : "transparent"}
                     />
                   ))}
@@ -691,7 +693,7 @@ function FollowerGrowthCard({
                 {hasFollowerTotals ? (
                   <Line
                     yAxisId="total"
-                    type="monotone"
+                    type="stepAfter"
                     dataKey="followers"
                     stroke="var(--color-followers)"
                     strokeWidth={2}
@@ -705,9 +707,9 @@ function FollowerGrowthCard({
                   <ReferenceArea
                     x1={dragRange[0]}
                     x2={dragRange[1]}
-                    fill="#6366f1"
+                    fill="var(--primary)"
                     fillOpacity={0.16}
-                    stroke="#6366f1"
+                    stroke="var(--primary)"
                     strokeOpacity={0.35}
                   />
                 ) : null}

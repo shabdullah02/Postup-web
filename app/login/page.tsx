@@ -129,7 +129,7 @@ function LoginPageContent() {
                     required
                   />
                   <p className="text-right text-sm">
-                    <Link href="/forgot-password" className="text-primary underline-offset-4 hover:underline">
+                    <Link href="/forgot-password" className="text-foreground underline-offset-4 hover:underline">
                       Forgot password?
                     </Link>
                   </p>
@@ -184,7 +184,7 @@ function LoginPageContent() {
                 Back to password
               </Button>
             ) : null}
-            <p className="text-center text-sm text-muted-foreground">New to Postup? <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">Create an account</Link></p>
+            <p className="text-center text-sm text-muted-foreground">New to Postup? <Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">Create an account</Link></p>
           </form>
         </CardContent>
       </Card>

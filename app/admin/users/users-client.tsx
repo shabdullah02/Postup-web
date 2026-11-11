@@ -262,7 +262,7 @@ export default function UsersClient() {
       </div>
 
       {detailUser ? (
-        <div className="fixed inset-0 z-[80] flex justify-end bg-black/40" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailUser(null) }}>
+        <div className="fixed inset-0 z-[80] flex justify-end bg-[var(--overlay)]" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailUser(null) }}>
           <aside role="dialog" aria-modal="true" aria-labelledby="admin-user-detail-title" className="h-full w-full max-w-xl overflow-y-auto bg-background p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div><h2 id="admin-user-detail-title" className="text-xl font-semibold">{detailUser.username}</h2><p className="mt-1 text-sm text-muted-foreground">{detailUser.email}</p></div>
@@ -300,7 +300,7 @@ export default function UsersClient() {
       ) : null}
 
       {deleteTarget ? (
-        <div className="fixed inset-0 z-[90] grid place-items-center bg-black/50 p-5">
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-[var(--overlay-strong)] p-5">
           <section role="dialog" aria-modal="true" aria-labelledby="delete-user-title" className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-2xl">
             <h2 id="delete-user-title" className="text-lg font-semibold">Delete {deleteTarget.username}?</h2>
             <p className="mt-2 text-sm text-muted-foreground">This permanently deletes the user. Type the username to confirm.</p>

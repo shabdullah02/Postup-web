@@ -19,14 +19,14 @@ const planAccents = {
   },
   pro: {
     strip: "bg-primary",
-    label: "text-primary",
+    label: "text-foreground",
     icon: "border-primary/40 text-primary",
     check: "border-primary/50 text-primary",
     tint: "bg-primary/5",
   },
   agency: {
     strip: "bg-primary/60",
-    label: "text-primary/80",
+    label: "text-foreground",
     icon: "border-primary/30 text-primary/80",
     check: "border-primary/40 text-primary/80",
     tint: "bg-primary/[0.03]",
@@ -48,7 +48,7 @@ export default function PricingSection() {
     <section id="pricing" className="scroll-mt-24 border-y border-border bg-muted/30 px-5 py-20 md:py-28">
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">Pricing</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">Pricing</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">Start small. Grow when you need to.</h2>
           <p className="mt-4 text-muted-foreground">Plan details are centralized in the site content and can be adjusted as packaging is finalized.</p>
         </div>
@@ -75,7 +75,7 @@ export default function PricingSection() {
             </div>
             {interval === "yearly" ? (
               <>
-                <span className="rounded border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">20% OFF · ENDS SOON</span>
+                <span className="rounded border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground">20% OFF · ENDS SOON</span>
                 <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">2 MONTHS FREE</span>
               </>
             ) : null}
@@ -111,14 +111,14 @@ export default function PricingSection() {
                 <div className="mt-6 flex min-h-8 items-center justify-between gap-2">
                   <h3 className="text-2xl font-bold tracking-tight">{plan.name}</h3>
                   {isYearlyPaidPlan ? (
-                    <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[10px] font-semibold text-primary">20% OFF</span>
+                    <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[10px] font-semibold text-foreground">20% OFF</span>
                   ) : null}
                 </div>
                 <p className="mt-2 min-h-12 text-sm leading-6 text-muted-foreground">{plan.description}</p>
 
                 <div className="mt-6 flex min-h-12 items-baseline gap-2">
                   {isYearlyPaidPlan ? (
-                    <span className="text-base text-destructive/70 line-through">${plan.monthly}</span>
+                    <span className="text-base text-destructive line-through">${plan.monthly}</span>
                   ) : null}
                   <span className="text-4xl font-semibold tracking-tight">${displayPrice}</span>
                   <span className="text-sm text-muted-foreground">/mo</span>

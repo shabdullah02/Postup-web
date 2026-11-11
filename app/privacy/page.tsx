@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <main className="px-5 py-16 md:py-24">
       <article className="mx-auto max-w-3xl space-y-8">
         <header>
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">Privacy</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">Privacy</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">Privacy policy</h1>
           <p className="mt-3 text-sm text-muted-foreground">Draft for operator review. Last updated October 15, 2026.</p>
         </header>

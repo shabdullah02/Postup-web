@@ -23,9 +23,6 @@ export const content = {
   cookieButton: "Accept",
   footer: "© 2026 Postup. All rights reserved.",
   marketing: {
-    proofHeading: "Built for teams that publish with intention",
-    proofNote: "Partner names below are illustrative placeholders.",
-    logos: ["Northstar", "Common Thread", "Fieldnotes", "Goodform"],
     features: [
       { title: "One clear publishing queue", description: "Keep Facebook Page drafts and scheduled posts together in one easy-to-scan view." },
       { title: "A calmer content rhythm", description: "Draft ahead, set a schedule, and keep the next post visible without another spreadsheet." },

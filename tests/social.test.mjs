@@ -8,8 +8,15 @@ import {
   localDateTimeToIsoWithOffset,
   postStatusLabel,
   providerLabel,
+  threadsErrors,
 } from "../lib/social.ts"
-import { listPendingSocialAccounts, publishPostNow, schedulePost, selectSocialAccounts } from "../lib/api.ts"
+import {
+  getThreadsAuthorizationUrl,
+  listPendingSocialAccounts,
+  publishPostNow,
+  schedulePost,
+  selectSocialAccounts,
+} from "../lib/api.ts"
 
 const account = (provider, status = "active") => ({
   id: 14,
@@ -35,9 +42,10 @@ const post = (status) => ({
   created_at: "2026-01-01T00:00:00Z",
 })
 
-test("provider badge label is correct for both providers", () => {
+test("provider badge labels are correct", () => {
   assert.equal(providerLabel("facebook"), "Facebook")
   assert.equal(providerLabel("instagram"), "Instagram")
+  assert.equal(providerLabel("threads"), "Threads")
 })
 
 test("needs_reauth account has a scheduled-post warning", () => {
@@ -60,6 +68,31 @@ test("every documented Facebook callback error has a user-facing message", () =>
     assert.equal(typeof facebookErrors[code], "string", `${code} is mapped`)
     assert.ok(facebookErrors[code].length > 0)
   }
+})
+
+test("Threads connection errors have clear user-facing messages", () => {
+  for (const code of ["expired_token", "invalid_token", "not_connected"]) {
+    assert.ok(threadsErrors[code], `${code} is mapped`)
+  }
+})
+
+test("Threads connect URL is fetched from the Threads authorization endpoint", async (context) => {
+  const originalFetch = globalThis.fetch
+  const originalApiUrl = process.env.NEXT_PUBLIC_API_URL
+  process.env.NEXT_PUBLIC_API_URL = "https://api.example.test"
+  let requestUrl = ""
+  globalThis.fetch = async (url) => {
+    requestUrl = String(url)
+    return Response.json({ authorization_url: "https://threads.example.test/oauth" })
+  }
+  context.after(() => {
+    globalThis.fetch = originalFetch
+    if (originalApiUrl === undefined) delete process.env.NEXT_PUBLIC_API_URL
+    else process.env.NEXT_PUBLIC_API_URL = originalApiUrl
+  })
+
+  assert.equal(await getThreadsAuthorizationUrl(), "https://threads.example.test/oauth")
+  assert.equal(requestUrl, "https://api.example.test/api/socials/threads/connect/")
 })
 
 test("pending account selection uses the mock API transport", async (context) => {

@@ -10,7 +10,7 @@ export default function DataDeletionPage() {
     <main className="px-5 py-16 md:py-24">
       <article className="mx-auto max-w-3xl space-y-7">
         <header>
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">Account data</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">Account data</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">Request data deletion</h1>
           <p className="mt-4 leading-7 text-muted-foreground">You can request deletion of your Postup account and associated data at any time.</p>
         </header>

@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
                 {isSubmitting ? "Sending..." : "Send reset link"}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                <Link href="/login" className="text-primary underline-offset-4 hover:underline">Return to login</Link>
+                <Link href="/login" className="text-foreground underline-offset-4 hover:underline">Return to login</Link>
               </p>
             </form>
           )}

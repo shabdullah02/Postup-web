@@ -17,7 +17,6 @@ import type {
   DeleteAccountRequest,
   DisableTwoFactorRequest,
   Invoice,
-  LoginRequest,
   LoginResponse,
   MockSubscribeRequest,
   OkResponse,
@@ -28,11 +27,11 @@ import type {
   Profile,
   RecoveryCodesResponse,
   RedirectResponse,
-  RegisterRequest,
   RegisterResponse,
   RegenerateRecoveryCodesRequest,
   Session,
   SocialAccount,
+  SocialProvider,
   Subscription,
   VerifyEmailRequest,
   TwoFactorLoginRequest,
@@ -236,9 +235,13 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
 
 export type Account = {
   id: number
-  provider: "facebook" | "instagram" | string
+  provider: SocialProvider
   external_id: string
   name: string
+  username?: string | null
+  avatar_url?: string | null
+  profile_picture_url?: string | null
+  threads_profile_picture_url?: string | null
   status: "active" | "needs_reauth" | "disconnected"
   scopes: string
   connected_at: string
@@ -262,6 +265,15 @@ export function instagramConnectUrl(): string {
   const url = new URL("/api/auth/connect/facebook/", getApiBaseUrl())
   url.searchParams.set("provider", "instagram")
   return url.toString()
+}
+
+export async function getThreadsAuthorizationUrl(): Promise<string> {
+  const response = await apiFetch("/api/socials/threads/connect/")
+  const data = await response.json() as { authorization_url?: unknown }
+  if (typeof data.authorization_url !== "string" || data.authorization_url.length === 0) {
+    throw new Error("Threads did not provide an authorization URL. Try connecting again.")
+  }
+  return data.authorization_url
 }
 
 export type FacebookPage = {

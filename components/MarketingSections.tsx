@@ -10,10 +10,10 @@ export function ProductShowcase() {
     <section className="border-y border-border bg-muted/30 px-5 py-16 md:py-24">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 max-w-xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">The workspace</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">The workspace</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">A clear view of what goes out next.</h2>
         </div>
-        <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xl shadow-black/5">
+        <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xl shadow-foreground/5">
           <AppPreview />
         </div>
       </div>
@@ -24,22 +24,10 @@ export function ProductShowcase() {
 export function MarketingSections() {
   return (
     <>
-      <section aria-label="Early community" className="px-5 py-14">
-        <div className="mx-auto max-w-6xl border-y border-border py-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <p className="text-sm font-medium text-muted-foreground">{content.marketing.proofHeading}</p>
-            <p className="text-xs text-muted-foreground">{content.marketing.proofNote}</p>
-          </div>
-          <div className="mt-7 grid grid-cols-2 gap-5 text-lg font-semibold text-muted-foreground sm:grid-cols-4">
-            {content.marketing.logos.map((logo) => <span key={logo}>{logo}</span>)}
-          </div>
-        </div>
-      </section>
-
       <section id="features" className="scroll-mt-24 px-5 py-16 md:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">Features</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">Features</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">Less tab-juggling. More thoughtful publishing.</h2>
           </div>
           <div className="mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
@@ -61,12 +49,12 @@ export function MarketingSections() {
 
       <section className="px-5 py-16 md:py-24">
         <div className="mx-auto max-w-6xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">How it works</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">How it works</p>
           <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight md:text-5xl">A small, repeatable publishing loop.</h2>
           <ol className="mt-10 grid gap-8 md:grid-cols-3">
             {content.marketing.steps.map((step) => (
               <li key={step.number} className="border-t border-border pt-5">
-                <span className="text-sm font-semibold text-primary">{step.number}</span>
+                <span className="text-sm font-semibold text-foreground">{step.number}</span>
                 <h3 className="mt-4 text-xl font-semibold">{step.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
               </li>
@@ -81,7 +69,7 @@ export function MarketingSections() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-wrap items-end justify-between gap-5">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">Customer notes</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">Customer notes</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">A calmer way to keep the queue moving.</h2>
             </div>
             <p className="max-w-sm text-xs text-muted-foreground">Testimonials below are clearly marked placeholders. Replace them with approved customer quotes before publication.</p>
@@ -103,7 +91,7 @@ export function MarketingSections() {
       <section id="faq" className="scroll-mt-24 border-y border-border bg-muted/30 px-5 py-16 md:py-24">
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[0.7fr_1.3fr]">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">FAQ</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">FAQ</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">Good to know.</h2>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">Need something else? <Link className="underline underline-offset-4" href="/contact">Talk to us.</Link></p>
           </div>

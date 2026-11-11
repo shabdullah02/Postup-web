@@ -11,10 +11,35 @@ export const facebookErrors = {
   missing_code: "Facebook did not return an authorization code. Start the connection again.",
 } as const
 
+export const threadsErrors: Record<string, string> = {
+  threads_unavailable: "Threads could not be reached. Check your connection and try again.",
+  permissions_declined: "Threads permissions were declined. Approve the requested access to connect.",
+  threads_denied: "Threads authorization was denied or cancelled. Try connecting again.",
+  invalid_state: "The Threads connection could not be verified, or it expired. Start the connection again.",
+  missing_code: "Threads did not return an authorization code. Start the connection again.",
+  expired_token: "Your Threads access token expired. Reconnect the account.",
+  token_expired: "Your Threads access token expired. Reconnect the account.",
+  access_token_expired: "Your Threads access token expired. Reconnect the account.",
+  invalid_token: "Your Threads access token is invalid. Reconnect the account.",
+  token_invalid: "Your Threads access token is invalid. Reconnect the account.",
+  invalid_grant: "Your Threads authorization is no longer valid. Reconnect the account.",
+  not_connected: "This Threads account is no longer connected. Connect it again.",
+  account_not_connected: "This Threads account is no longer connected. Connect it again.",
+  needs_reauth: "Your Threads connection needs to be renewed. Reconnect the account.",
+  reauth_required: "Your Threads connection needs to be renewed. Reconnect the account.",
+}
+
 export function providerLabel(provider: string): string {
   if (provider === "instagram") return "Instagram"
   if (provider === "facebook") return "Facebook"
+  if (provider === "threads") return "Threads"
   return provider
+}
+
+export function accountDisplayName(account: Account): string {
+  if (account.provider !== "threads") return account.name
+  const username = account.username?.trim() || account.name.trim()
+  return `@${username.replace(/^@/, "")}`
 }
 
 export function accountReauthWarning(account: Account): string | null {

@@ -34,10 +34,28 @@ import {
   type Post,
   ApiError,
 } from "@/lib/api"
-import { canEditPost, instagramImageValidationError, localDateTimeToIsoWithOffset } from "@/lib/social"
+import {
+  accountDisplayName,
+  canEditPost,
+  instagramImageValidationError,
+  localDateTimeToIsoWithOffset,
+  threadsErrors,
+} from "@/lib/social"
 
 const MAX_CONTENT_LENGTH = 10000
+const MAX_THREADS_CONTENT_LENGTH = 500
 type PublishMode = "now" | "schedule"
+
+function accountRequestError(error: unknown, account: Account | undefined): string {
+  if (account?.provider === "threads" && error instanceof ApiError) {
+    const code = error.code?.toLowerCase()
+    if (code && threadsErrors[code]) return threadsErrors[code]
+    if (error.status === 401 || error.status === 403) {
+      return "Your Threads connection expired or is no longer authorized. Reconnect Threads from Accounts."
+    }
+  }
+  return error instanceof Error ? error.message : "Unable to complete this request."
+}
 
 function ComposePageContent() {
   const router = useRouter()
@@ -67,6 +85,9 @@ function ComposePageContent() {
 
   const selectedAccount = accounts.find((account) => account.id === Number(accountId))
   const isInstagramAccount = selectedAccount?.provider === "instagram"
+  const isThreadsAccount = selectedAccount?.provider === "threads"
+  const maxContentLength = isThreadsAccount ? MAX_THREADS_CONTENT_LENGTH : MAX_CONTENT_LENGTH
+  const threadsContentTooLong = isThreadsAccount && content.length > MAX_THREADS_CONTENT_LENGTH
 
   useEffect(() => {
     async function loadData() {
@@ -171,6 +192,7 @@ function ComposePageContent() {
 
   async function handlePostNow() {
     if (submitInProgress.current) return
+    if (threadsContentTooLong) return
     if (!accountId) {
       setError("Select an account.")
       return
@@ -211,13 +233,21 @@ function ComposePageContent() {
         setPublishSuccess({ permalinkUrl: result.permalink_url })
         clearComposer()
       } else if (result.status === "failed" && result.error === "failed: reauth required") {
-        setPublishError("Your Facebook connection expired.")
+        setPublishError(selectedAccount?.provider === "threads"
+          ? "Your Threads connection expired. Reconnect this account."
+          : "Your Facebook connection expired.")
+      } else if (
+        selectedAccount?.provider === "threads"
+        && result.status === "failed"
+        && /expired|invalid token|not connected|reauth/i.test(result.error ?? "")
+      ) {
+        setPublishError("Your Threads connection expired or is no longer valid. Reconnect this account.")
       } else {
         setPublishError(result.error || "Publishing failed.")
       }
     } catch (requestError) {
       if (requestError instanceof ApiError) {
-        setError(requestError.message)
+        setError(accountRequestError(requestError, selectedAccount))
       } else {
         setError("Your post was saved as a draft and can be published from the posts list.")
       }
@@ -229,6 +259,7 @@ function ComposePageContent() {
 
   async function handleSchedule() {
     if (submitInProgress.current) return
+    if (threadsContentTooLong) return
     if (requiresEmailVerification) {
       setScheduleError("Verify your email before scheduling a post.")
       return
@@ -282,7 +313,7 @@ function ComposePageContent() {
       await schedulePost(post.id, scheduledAt)
       router.push("/dashboard")
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to schedule post")
+      setError(accountRequestError(requestError, selectedAccount))
     } finally {
       submitInProgress.current = false
       setIsSubmitting(false)
@@ -312,7 +343,8 @@ function ComposePageContent() {
                   {publishError ? (
                     <div role="alert" className="space-y-2 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
                       <p>{publishError}</p>
-                      {publishError === "Your Facebook connection expired." ? (
+                      {publishError === "Your Facebook connection expired."
+                        || publishError === "Your Threads connection expired. Reconnect this account." ? (
                         <Link href="/accounts" className="font-medium underline underline-offset-4">
                           Reconnect this account
                         </Link>
@@ -320,7 +352,7 @@ function ComposePageContent() {
                     </div>
                   ) : null}
                   {publishSuccess ? (
-                    <p role="status" className="rounded-md border border-green-600/30 bg-green-600/10 p-4 text-sm">
+                    <p role="status" className="rounded-md border border-border bg-muted p-4 text-sm">
                       Post published successfully.
                       {publishSuccess.permalinkUrl ? (
                         <>
@@ -359,13 +391,21 @@ function ComposePageContent() {
                     <Textarea
                       id="content"
                       value={content}
-                      onChange={(event) => setContent(event.target.value.slice(0, MAX_CONTENT_LENGTH))}
+                      maxLength={maxContentLength}
+                      aria-invalid={threadsContentTooLong}
+                      aria-describedby={threadsContentTooLong ? "threads-content-error" : undefined}
+                      onChange={(event) => setContent(event.target.value.slice(0, maxContentLength))}
                       placeholder="Write your post content here"
                       rows={10}
                     />
                     <p className="text-right text-sm text-muted-foreground">
-                      {wordCount} words / {MAX_CONTENT_LENGTH} chars
+                      {wordCount} words / {content.length} of {maxContentLength} chars
                     </p>
+                    {threadsContentTooLong ? (
+                      <p id="threads-content-error" role="alert" className="text-sm text-destructive">
+                        Threads posts are limited to 500 characters. Shorten this post to publish.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="space-y-2">
@@ -380,7 +420,7 @@ function ComposePageContent() {
                       <SelectContent>
                         {accounts.map((account) => (
                           <SelectItem key={account.id} value={account.id.toString()}>
-                            {account.name}
+                            {accountDisplayName(account)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -458,7 +498,7 @@ function ComposePageContent() {
                         type="button"
                         variant="secondary"
                         onClick={() => void (publishMode === "now" ? handlePostNow() : handleSchedule())}
-                        disabled={isSaving || isSubmitting || !isEditable || (publishMode === "now" && selectedAccount?.status === "needs_reauth") || (publishMode === "schedule" && requiresEmailVerification)}
+                        disabled={isSaving || isSubmitting || !isEditable || threadsContentTooLong || (publishMode === "now" && selectedAccount?.status === "needs_reauth") || (publishMode === "schedule" && requiresEmailVerification)}
                       >
                         {isSubmitting
                           ? publishMode === "now" ? "Publishing..." : "Scheduling..."
@@ -469,7 +509,7 @@ function ComposePageContent() {
                   {publishMode === "now" && selectedAccount?.status === "needs_reauth" ? (
                     <p className="text-sm text-muted-foreground">
                       Reconnect this account before publishing.{" "}
-                      <Link href="/accounts" className="font-medium text-primary underline underline-offset-4">
+                      <Link href="/accounts" className="font-medium text-foreground underline underline-offset-4">
                         Go to accounts
                       </Link>
                     </p>

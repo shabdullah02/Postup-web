@@ -18,7 +18,7 @@ export function SubscriptionStatusBanner() {
       : "Your subscription has ended. Choose a plan to restore paid features."
 
   return (
-    <aside role="status" className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-600/30 bg-amber-500/10 px-5 py-3 text-sm">
+    <aside role="status" className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/30 bg-muted px-5 py-3 text-sm">
       <p>{message}</p>
       <Link href="/billing" className="font-semibold underline underline-offset-4">Review billing</Link>
     </aside>
@@ -43,7 +43,7 @@ export function PlanLimitPrompt() {
     <div role="alert" className="fixed bottom-5 left-1/2 z-[60] flex w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 items-start gap-4 rounded-xl border border-border bg-background p-4 shadow-xl">
       <p className="flex-1 text-sm leading-6">{message}</p>
       <Button type="button" size="icon" variant="ghost" aria-label="Dismiss plan limit message" onClick={() => setMessage("")}><X aria-hidden="true" /></Button>
-      <Link href="/billing" className="shrink-0 text-sm font-semibold text-primary underline underline-offset-4">Upgrade</Link>
+      <Link href="/billing" className="shrink-0 text-sm font-semibold text-foreground underline underline-offset-4">Upgrade</Link>
     </div>
   )
 }

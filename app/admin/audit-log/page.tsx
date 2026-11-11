@@ -117,7 +117,7 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
       <td className="px-4 py-3 font-medium">{entry.action}</td>
       <td className="max-w-[24rem] px-4 py-3">
         <details>
-          <summary className="cursor-pointer text-primary">View details</summary>
+          <summary className="cursor-pointer text-foreground">View details</summary>
           <pre className="mt-2 whitespace-pre-wrap break-words text-xs">{detailText}</pre>
         </details>
       </td>

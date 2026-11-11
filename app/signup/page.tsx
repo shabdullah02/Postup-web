@@ -115,7 +115,7 @@ export default function SignupPage() {
             <Button className="w-full" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Creating account..." : "Create account"}
             </Button>
-            <p className="text-center text-sm text-muted-foreground">Already have an account? <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">Log in</Link></p>
+            <p className="text-center text-sm text-muted-foreground">Already have an account? <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">Log in</Link></p>
           </form>
           )}
         </CardContent>

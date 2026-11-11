@@ -83,7 +83,7 @@ export type Session = {
 
 export type SocialAccount = {
   id: number
-  provider: string
+  provider: SocialProvider
   external_id: string
   name: string
   status: string
@@ -94,6 +94,8 @@ export type SocialAccount = {
 export type AnalyticsMetric = "views" | "reach" | "engagements" | "follows" | "unfollows" | "followers_total"
 
 export type AnalyticsSeriesPoint = { date: string; value: number | null }
+
+export type SocialProvider = "facebook" | "instagram" | "threads"
 
 export type AnalyticsOverview = {
   range: string | { since: string; until: string; days: number }

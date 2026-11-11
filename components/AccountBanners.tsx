@@ -129,9 +129,9 @@ export default function AccountBanners() {
 
   return (
     <div className="space-y-2">
-      {billingToast ? <p role="status" className="border-b bg-emerald-500/10 px-4 py-3 text-sm">{billingToast}</p> : null}
+      {billingToast ? <p role="status" className="border-b border-border bg-muted px-4 py-3 text-sm">{billingToast}</p> : null}
       {!user.email_verified ? (
-        <section className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm" aria-label="Email verification">
+        <section className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/30 bg-muted px-4 py-3 text-sm" aria-label="Email verification">
           <div>
             <p className="font-medium">Verify your email address to access all account features.</p>
             {resendMessage ? <p role="status" className="mt-1">{resendMessage}</p> : null}
@@ -147,7 +147,7 @@ export default function AccountBanners() {
         <p role="status" className="border-b px-4 py-2 text-sm text-muted-foreground">Loading subscription status...</p>
       ) : null}
       {subscriptionState === "loaded" && billingNotice ? (
-        <section className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm" aria-label="Subscription notice">
+        <section className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/30 bg-muted px-4 py-3 text-sm" aria-label="Subscription notice">
           <p>{billingNotice}</p>
           <Link href="/billing" className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">Manage billing</Link>
         </section>

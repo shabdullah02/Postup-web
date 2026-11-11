@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ChevronDown, Menu, Moon, Sun, X } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
+import FullBleedLine from "@/components/FullBleedLine"
 import { useAuth } from "@/components/AuthProvider"
 import { useBilling } from "@/components/BillingProvider"
 import { workspaceNavigation } from "@/lib/workspace-navigation"
@@ -75,16 +76,16 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-[rgba(255,255,255,0.6)] backdrop-blur-[12px] [-webkit-backdrop-filter:blur(12px)] dark:bg-[rgba(25,25,25,0.6)]">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/60 backdrop-blur-[12px] [-webkit-backdrop-filter:blur(12px)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
         <div className="flex min-w-0 items-center gap-8 xl:gap-12">
           <Link href="/" aria-label={`${content.appName} home`} className="flex shrink-0 items-center">
             <span className="text-base font-semibold text-[var(--primary-text)]">{content.appName}</span>
           </Link>
           <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
-            <Link href="/#features" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">Features</Link>
-            <Link href="/pricing" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">Pricing</Link>
-            <Link href="/#faq" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">FAQ</Link>
+            <Link href="/#features" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-primary/10 hover:text-foreground">Features</Link>
+            <Link href="/pricing" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-primary/10 hover:text-foreground">Pricing</Link>
+            <Link href="/#faq" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-primary/10 hover:text-foreground">FAQ</Link>
           </nav>
         </div>
 
@@ -105,13 +106,13 @@ export default function Navbar() {
                 compact={false}
                 id="desktop-account-menu"
               />
-              {user.is_staff ? <Link href="/admin" className="rounded-[5px] px-2 py-2 text-sm font-medium text-[var(--secondary-text)] hover:text-[var(--accent)]">Admin</Link> : null}
-              <Link href="/dashboard" className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm font-medium text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">Dashboard</Link>
+              {user.is_staff ? <Link href="/admin" className="rounded-[5px] px-2 py-2 text-sm font-medium text-[var(--secondary-text)] hover:text-foreground">Admin</Link> : null}
+              <Link href="/dashboard" className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm font-medium text-[var(--button-foreground)] transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Dashboard</Link>
             </div>
           ) : (
             <>
-              <Link href="/login" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">Log in</Link>
-              <Link href="/signup" className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm font-medium text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">Get started</Link>
+              <Link href="/login" className="rounded-[4px] px-2.5 py-2 text-sm font-medium text-[var(--secondary-text)] transition-colors duration-150 hover:bg-primary/10 hover:text-foreground">Log in</Link>
+              <Link href="/signup" className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm font-medium text-[var(--button-foreground)] transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Get started</Link>
             </>
           )}
           <button
@@ -167,7 +168,7 @@ export default function Navbar() {
             type="button"
             aria-label="Dismiss navigation overlay"
             onClick={() => setMobileOpen(false)}
-            className="absolute inset-x-0 top-16 z-40 h-[calc(100dvh-4rem)] bg-black/30 xl:hidden"
+            className="absolute inset-x-0 top-16 z-40 h-[calc(100dvh-4rem)] bg-[var(--overlay-light)] xl:hidden"
           />
           <nav
             id="mobile-menu"
@@ -189,7 +190,7 @@ export default function Navbar() {
                         aria-current={active ? "page" : undefined}
                         className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${active
                           ? "bg-[var(--surface)] font-medium text-[var(--primary-text)]"
-                          : "text-[var(--secondary-text)] hover:bg-[var(--surface)] hover:text-[var(--accent)]"}`}
+                          : "text-[var(--secondary-text)] hover:bg-primary/10 hover:text-foreground"}`}
                       >
                         <HugeiconsIcon icon={item.icon} strokeWidth={2} className="size-5 shrink-0" aria-hidden="true" />
                         <span className="whitespace-nowrap">{item.label}</span>
@@ -198,19 +199,20 @@ export default function Navbar() {
                   })}
               </div>
             ) : null}
-            <Link href="/#features" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">Features</Link>
-            <Link href="/pricing" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">Pricing</Link>
-            <Link href="/#faq" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-[var(--surface)] hover:text-[var(--accent)]">FAQ</Link>
+            <Link href="/#features" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-primary/10 hover:text-foreground">Features</Link>
+            <Link href="/pricing" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-primary/10 hover:text-foreground">Pricing</Link>
+            <Link href="/#faq" onClick={() => setMobileOpen(false)} className="rounded-[4px] px-3 py-3 text-sm text-[var(--secondary-text)] transition-colors duration-150 hover:bg-primary/10 hover:text-foreground">FAQ</Link>
             {!isLoading && !user ? (
               <div className="mt-2 flex gap-4 border-t border-[var(--border-color)] pt-3">
                 <Link href="/login" onClick={() => setMobileOpen(false)} className="px-3 py-2 text-sm text-[var(--secondary-text)]">Log in</Link>
-                <Link href="/signup" onClick={() => setMobileOpen(false)} className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm text-[var(--button-foreground)] transition-colors duration-150 hover:bg-[var(--accent)]">Get started</Link>
+                <Link href="/signup" onClick={() => setMobileOpen(false)} className="rounded-[5px] bg-[var(--button-background)] px-3 py-2 text-sm text-[var(--button-foreground)] transition-colors duration-150 hover:bg-primary/90">Get started</Link>
               </div>
             ) : null}
           </div>
           </nav>
         </>
       ) : null}
+      <FullBleedLine className="bottom-0 opacity-50" />
     </header>
   )
 }
@@ -317,7 +319,7 @@ function AccountMenu({
           setLogoutError("")
           setOpen((current) => !current)
         }}
-        className="flex max-w-[13rem] items-center gap-2 rounded-md p-1.5 text-left text-[var(--primary-text)] outline-none transition-colors hover:bg-[var(--surface)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        className="flex max-w-[13rem] items-center gap-2 rounded-md p-1.5 text-left text-[var(--primary-text)] outline-none transition-colors hover:bg-[var(--surface)] focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--surface)] text-sm font-semibold" aria-hidden="true">
           {initial}

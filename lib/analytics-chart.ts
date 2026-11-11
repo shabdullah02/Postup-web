@@ -68,29 +68,57 @@ export function buildAnalyticsChartPoints(overview: AnalyticsOverview): Analytic
     }
   })
 
+  if (points.length === 0) return points
+
   const datedTotals = points.filter((point) => point.followers !== null)
   const distinctApiTotals = new Set(datedTotals.map((point) => point.followers))
   const hasHistoricalApiTotals = datedTotals.length >= 2 && distinctApiTotals.size >= 2
-  if (hasHistoricalApiTotals) return points
+  let chartPoints = points
+  if (!hasHistoricalApiTotals) {
+    const currentTotal = overview.totals.followers_total
+    const hasCompleteNetChanges = points.length >= 2
+      && numericValue(currentTotal)
+      && points.every((point) => point.netChange !== null)
 
-  const currentTotal = overview.totals.followers_total
-  const hasCompleteNetChanges = points.length >= 2
-    && numericValue(currentTotal)
-    && points.every((point) => point.netChange !== null)
+    if (!hasCompleteNetChanges) {
+      chartPoints = points.map((point) => ({ ...point, followers: null }))
+    } else {
+      const reconstructed = new Array<number>(points.length)
+      reconstructed[points.length - 1] = currentTotal
+      for (let index = points.length - 1; index > 0; index -= 1) {
+        reconstructed[index - 1] = reconstructed[index] - points[index].netChange!
+      }
 
-  if (!hasCompleteNetChanges) {
-    return points.map((point) => ({ ...point, followers: null }))
+      chartPoints = new Set(reconstructed).size < 2
+        ? points.map((point) => ({ ...point, followers: null }))
+        : points.map((point, index) => ({ ...point, followers: reconstructed[index] }))
+    }
   }
 
-  const reconstructed = new Array<number>(points.length)
-  reconstructed[points.length - 1] = currentTotal
-  for (let index = points.length - 1; index > 0; index -= 1) {
-    reconstructed[index - 1] = reconstructed[index] - points[index].netChange!
+  const firstDate = typeof overview.range === "object"
+    ? overview.range.since.slice(0, 10)
+    : chartPoints[0].date
+  const lastDate = typeof overview.range === "object"
+    ? overview.range.until.slice(0, 10)
+    : chartPoints[chartPoints.length - 1].date
+  const start = Date.parse(`${firstDate}T00:00:00Z`)
+  const end = Date.parse(`${lastDate}T00:00:00Z`)
+  const datesToInclude = new Set(chartPoints.map((point) => point.date))
+
+  if (Number.isFinite(start) && Number.isFinite(end) && start <= end) {
+    for (let timestamp = start; timestamp <= end; timestamp += 86_400_000) {
+      datesToInclude.add(new Date(timestamp).toISOString().slice(0, 10))
+    }
   }
 
-  if (new Set(reconstructed).size < 2) {
-    return points.map((point) => ({ ...point, followers: null }))
-  }
-
-  return points.map((point, index) => ({ ...point, followers: reconstructed[index] }))
+  const pointsByDate = new Map(chartPoints.map((point) => [point.date, point] as const))
+  let previousFollowers: number | null = null
+  return [...datesToInclude].sort().map((date) => {
+    const point = pointsByDate.get(date)
+    if (point) {
+      if (point.followers !== null) previousFollowers = point.followers
+      return point
+    }
+    return { date, netChange: 0, followers: previousFollowers }
+  })
 }

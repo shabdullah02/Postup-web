@@ -253,7 +253,7 @@ export default function DashboardPage() {
                               href={post.permalink_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm font-medium text-primary underline underline-offset-4"
+                              className="text-sm font-medium text-foreground underline underline-offset-4"
                             >
                               View on {providerLabel(account?.provider ?? "facebook")}
                             </Link>

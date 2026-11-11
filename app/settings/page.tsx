@@ -69,7 +69,7 @@ export default function SettingsPage() {
               aria-selected={activeTab === tab}
               aria-controls="settings-panel"
               onClick={() => setActiveTab(tab)}
-              className={`border-b-2 px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`border-b-2 px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               {tab}
             </button>
@@ -208,7 +208,7 @@ function ProfilePanel({ onRefreshAuth }: { onRefreshAuth: () => Promise<unknown>
               <label htmlFor="profile-last-name" className="text-sm font-medium">Last name</label>
               <Input id="profile-last-name" autoComplete="family-name" value={fields.last_name} onChange={(event) => updateField("last_name", event.target.value)} />
             </div>
-            {notice ? <p role="status" className="sm:col-span-2 text-sm text-green-700 dark:text-green-400">{notice}</p> : null}
+            {notice ? <p role="status" className="sm:col-span-2 text-sm text-foreground">{notice}</p> : null}
             {submitError ? <p role="alert" className="sm:col-span-2 text-sm text-destructive">{submitError}</p> : null}
             <div className="sm:col-span-2">
               <Button type="submit" disabled={isSaving}>{isSaving ? "Saving..." : "Save profile"}</Button>
@@ -385,7 +385,7 @@ function ChangePasswordForm() {
             <label htmlFor="confirm-new-password" className="text-sm font-medium">Confirm new password</label>
             <Input id="confirm-new-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required />
           </div>
-          {message ? <p role="status" className="sm:col-span-2 text-sm text-green-700 dark:text-green-400">{message}</p> : null}
+          {message ? <p role="status" className="sm:col-span-2 text-sm text-foreground">{message}</p> : null}
           {error ? <p role="alert" className="sm:col-span-2 text-sm text-destructive">{error}</p> : null}
           <div className="sm:col-span-2"><Button type="submit" disabled={isSaving}>{isSaving ? "Updating..." : "Change password"}</Button></div>
         </form>
@@ -508,7 +508,7 @@ function TwoFactorPanel({ isEnabled }: { isEnabled: boolean }) {
       </CardHeader>
       <CardContent className="space-y-5">
         <p className="text-sm">Status: {isEnabled ? "Enabled" : "Not enabled"}</p>
-        {message ? <p role="status" className="text-sm text-green-700 dark:text-green-400">{message}</p> : null}
+        {message ? <p role="status" className="text-sm text-foreground">{message}</p> : null}
 
         {!isEnabled && !setup ? (
           <div className="space-y-3">
@@ -522,7 +522,7 @@ function TwoFactorPanel({ isEnabled }: { isEnabled: boolean }) {
         {setup ? (
           <div className="space-y-5">
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-              <div className="rounded-md border bg-white p-3">
+              <div className="rounded-md border bg-background p-3">
                 <QRCodeSVG value={setup.otpauth_uri} size={192} level="M" />
               </div>
               <div className="space-y-2 text-sm">
@@ -574,7 +574,7 @@ function TwoFactorPanel({ isEnabled }: { isEnabled: boolean }) {
         ) : null}
 
         {recoveryCodes.length > 0 ? (
-          <section className="space-y-4 rounded-md border border-amber-500/40 bg-amber-500/5 p-4" aria-label="Recovery codes">
+          <section className="space-y-4 rounded-md border border-primary/30 bg-muted p-4" aria-label="Recovery codes">
             <div>
               <h3 className="font-medium">Save your recovery codes now</h3>
               <p className="mt-1 text-sm text-muted-foreground">These codes are shown only once. Keep them somewhere secure.</p>
@@ -851,7 +851,7 @@ function BillingPanel() {
                     <Button type="button" variant="outline" onClick={() => setShowPaymentForm(true)}>Replace card</Button>
                   </div>
                 ) : null}
-                {message ? <p role="status" className="text-sm text-green-700 dark:text-green-400">{message}</p> : null}
+                {message ? <p role="status" className="text-sm text-foreground">{message}</p> : null}
               </CardContent>
             </Card>
           )
@@ -911,7 +911,7 @@ function BillingPanel() {
             <div><dt className="text-sm text-muted-foreground">Current period ends</dt><dd className="mt-1 text-sm">{formattedDate(subscription.current_period_end)}</dd></div>
             <div><dt className="text-sm text-muted-foreground">Days remaining</dt><dd className="mt-1 text-sm">{subscription.days_remaining ?? "Not available"}</dd></div>
           </dl>
-          {trialMessage ? <p role="status" className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">{trialMessage}</p> : null}
+          {trialMessage ? <p role="status" className="rounded-md border border-primary/30 bg-muted p-3 text-sm">{trialMessage}</p> : null}
           {billingProvider === "mock" && paymentMethod ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
               <p>
@@ -924,14 +924,14 @@ function BillingPanel() {
             </div>
           ) : null}
           {subscription.cancel_at_period_end ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/30 bg-muted p-3 text-sm">
               <p>Your plan is set to end on {formattedDate(subscription.current_period_end)}.</p>
               <Button type="button" variant="outline" disabled={pendingAction !== ""} onClick={() => void handleResume()}>
                 {pendingAction === "resume" ? "Resuming..." : "Resume subscription"}
               </Button>
             </div>
           ) : null}
-          {message ? <p role="status" className="text-sm text-green-700 dark:text-green-400">{message}</p> : null}
+          {message ? <p role="status" className="text-sm text-foreground">{message}</p> : null}
           {actionError ? <p role="alert" className="text-sm text-destructive">{actionError}</p> : null}
           {!subscription.cancel_at_period_end && currentPlan !== "free" ? (
             <Button type="button" variant="outline" disabled={pendingAction !== ""} onClick={() => void handleCancel()}>
@@ -1047,7 +1047,7 @@ function InvoiceHistory({ invoices }: { invoices: Invoice[] }) {
                     <td className="py-3 pr-4">{new Intl.NumberFormat(undefined, { style: "currency", currency: invoice.currency.toUpperCase() }).format(invoice.amount / 100)}</td>
                     <td className="py-3 pr-4 capitalize">{invoice.status.replaceAll("_", " ")}</td>
                     <td className="py-3 text-right">
-                      {invoice.hosted_invoice_url ? <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">View invoice</a> : <span className="text-muted-foreground">Unavailable</span>}
+                      {invoice.hosted_invoice_url ? <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline-offset-4 hover:underline">View invoice</a> : <span className="text-muted-foreground">Unavailable</span>}
                     </td>
                   </tr>
                 ))}

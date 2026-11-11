@@ -47,7 +47,7 @@ export default function Hero() {
   return (
     <section
       aria-labelledby="landing-hero-title"
-      className="px-5 py-20 sm:px-8 lg:px-10 lg:py-28"
+      className="border-b border-border px-5 py-20 sm:px-8 lg:px-10 lg:py-28"
     >
       <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_500px]">
         <div className="min-w-0 max-w-3xl">

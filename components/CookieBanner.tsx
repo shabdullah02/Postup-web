@@ -48,7 +48,7 @@ export default function CookieBanner() {
     <aside aria-label="Cookie notice" className="fixed bottom-5 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-[60rem] -translate-x-1/2 flex-wrap items-center gap-4 rounded-[6px] border border-[var(--border-color)] bg-[var(--cookie-background)] px-4 py-3 sm:flex-nowrap sm:px-5">
       <Fingerprint className="hidden size-6 shrink-0 text-[var(--secondary-text)] sm:block" aria-hidden="true" />
       <p className="min-w-0 flex-1 text-sm leading-5 text-[var(--secondary-text)]">
-        {content.cookieText}{" "}<Link href="/privacy" className="text-[var(--accent)] underline underline-offset-2 transition-opacity duration-150 hover:opacity-80">{content.privacyLink}</Link>
+        {content.cookieText}{" "}<Link href="/privacy" className="text-foreground underline underline-offset-2 transition-opacity duration-150 hover:opacity-80">{content.privacyLink}</Link>
       </p>
       <button type="button" onClick={allowCookies} className="rounded-[4px] border border-[var(--border-color)] px-3 py-2 text-sm font-medium text-[var(--primary-text)] transition-colors duration-150 hover:bg-[var(--surface)]">
         {content.cookieButton}

@@ -147,3 +147,22 @@ test("backend net follower growth series is used for daily bars", () => {
   const points = buildAnalyticsChartPoints(overview)
   assert.deepEqual(points.map(({ netChange }) => netChange), [0, 0, 0, 0, -1, 0, 3])
 })
+
+test("missing dates are filled with zero growth and the previous follower total", () => {
+  const overview = overviewWithSeries({
+    follows: [0, 1, 0, 1, 0, 0, 0],
+    unfollows: [0, 0, 0, 0, 0, 0, 0],
+    followersTotal: [10, 11, 11, 12, 12, 12, 12],
+  })
+  for (const key of ["follows", "unfollows", "followers_total"]) {
+    overview.series[key] = overview.series[key].filter(
+      ({ date }) => date !== dates[0] && date !== dates[2]
+    )
+  }
+
+  const points = buildAnalyticsChartPoints(overview)
+  assert.deepEqual(points.map(({ date }) => date), dates)
+  assert.deepEqual(points[0], { date: dates[0], netChange: 0, followers: null })
+  assert.deepEqual(points[2], { date: dates[2], netChange: 0, followers: 11 })
+  assert.deepEqual(points[1], { date: dates[1], netChange: 1, followers: 11 })
+})
