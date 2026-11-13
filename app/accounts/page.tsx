@@ -9,8 +9,8 @@ import { AuthGate } from "@/components/AuthGate"
 import { useAuth } from "@/components/AuthProvider"
 import {
   facebookConnectUrl,
-  getThreadsAuthorizationUrl,
   instagramConnectUrl,
+  threadsConnectUrl,
   deleteAccount,
   listAccounts,
   listPendingSocialAccounts,
@@ -81,11 +81,11 @@ function AccountsPageContent() {
     }
   }, [refreshAfterCallback, router])
 
-  async function connectThreads() {
+  function connectThreads() {
     setThreadsConnectError("")
     setIsThreadsConnecting(true)
     try {
-      window.location.href = await getThreadsAuthorizationUrl()
+      window.location.href = threadsConnectUrl()
     } catch (requestError) {
       setThreadsConnectError(requestError instanceof Error
         ? requestError.message
@@ -136,7 +136,7 @@ function AccountsPageContent() {
                   type="button"
                   variant="outline"
                   disabled={requiresEmailVerification || isThreadsConnecting}
-                  onClick={() => void connectThreads()}
+                  onClick={connectThreads}
                 >
                   <HugeiconsIcon icon={ThreadsIcon} size={16} aria-hidden="true" />
                   {isThreadsConnecting ? "Connecting..." : "Connect Threads"}
@@ -164,7 +164,7 @@ function AccountsPageContent() {
                   </Button>
                 </span>
               ) : (
-                <Button type="button" variant="outline" disabled={requiresEmailVerification || isThreadsConnecting} onClick={() => void connectThreads()}>
+                <Button type="button" variant="outline" disabled={requiresEmailVerification || isThreadsConnecting} onClick={connectThreads}>
                   Try again
                 </Button>
               )}

@@ -11,11 +11,11 @@ import {
   threadsErrors,
 } from "../lib/social.ts"
 import {
-  getThreadsAuthorizationUrl,
   listPendingSocialAccounts,
   publishPostNow,
   schedulePost,
   selectSocialAccounts,
+  threadsConnectUrl,
 } from "../lib/api.ts"
 
 const account = (provider, status = "active") => ({
@@ -76,23 +76,15 @@ test("Threads connection errors have clear user-facing messages", () => {
   }
 })
 
-test("Threads connect URL is fetched from the Threads authorization endpoint", async (context) => {
-  const originalFetch = globalThis.fetch
+test("Threads connect URL navigates directly to the Threads connect endpoint", (context) => {
   const originalApiUrl = process.env.NEXT_PUBLIC_API_URL
   process.env.NEXT_PUBLIC_API_URL = "https://api.example.test"
-  let requestUrl = ""
-  globalThis.fetch = async (url) => {
-    requestUrl = String(url)
-    return Response.json({ authorization_url: "https://threads.example.test/oauth" })
-  }
   context.after(() => {
-    globalThis.fetch = originalFetch
     if (originalApiUrl === undefined) delete process.env.NEXT_PUBLIC_API_URL
     else process.env.NEXT_PUBLIC_API_URL = originalApiUrl
   })
 
-  assert.equal(await getThreadsAuthorizationUrl(), "https://threads.example.test/oauth")
-  assert.equal(requestUrl, "https://api.example.test/api/socials/threads/connect/")
+  assert.equal(threadsConnectUrl(), "https://api.example.test/api/socials/threads/connect/")
 })
 
 test("pending account selection uses the mock API transport", async (context) => {

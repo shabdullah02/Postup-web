@@ -13,7 +13,9 @@ import {
   CardHeader,
 } from "@/components/ui/card"
 import { cn } from "cn"
+import { Trash2 } from "lucide-react"
 import { deletePost, listAccounts, listPosts, logout, publishPostNow, type Account, type Post } from "@/lib/api"
+import type { SocialProvider } from "@/lib/api-types"
 import { canEditPost, postStatusLabel, providerLabel } from "@/lib/social"
 
 const STATUS_ORDER = ["scheduled", "publishing", "draft", "posted", "failed", "deleted_on_facebook"] as const
@@ -37,11 +39,19 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedProvider, setSelectedProvider] = useState<"all" | "facebook" | "instagram">("all")
+  const [selectedProvider, setSelectedProvider] = useState<"all" | SocialProvider>("all")
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [publishingPostIds, setPublishingPostIds] = useState<number[]>([])
+  const [isDeletingFailedPosts, setIsDeletingFailedPosts] = useState(false)
+  const [toast, setToast] = useState<{ tone: "success" | "error"; text: string } | null>(null)
   const publishingPostIdsRef = useRef(new Set<number>())
+
+  useEffect(() => {
+    if (!toast) return
+    const timeout = window.setTimeout(() => setToast(null), 5000)
+    return () => window.clearTimeout(timeout)
+  }, [toast])
 
   async function loadData(initialLoad = false) {
     try {
@@ -121,6 +131,47 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleDeleteFailedPost(post: Post) {
+    if (isDeletingFailedPosts || !window.confirm("Delete this failed post?")) return
+
+    setIsDeletingFailedPosts(true)
+    try {
+      await deletePost(post.id)
+      setToast({ tone: "success", text: "Failed post deleted." })
+      await loadData()
+    } catch (requestError) {
+      setToast({
+        tone: "error",
+        text: requestError instanceof Error ? requestError.message : "Unable to delete failed post.",
+      })
+    } finally {
+      setIsDeletingFailedPosts(false)
+    }
+  }
+
+  async function handleClearFailedPosts() {
+    const failedPosts = posts.filter(
+      (post) => post.account === activeAccountId && post.status === "failed"
+    )
+    if (isDeletingFailedPosts || failedPosts.length === 0) return
+    if (!window.confirm(`Delete all ${failedPosts.length} failed posts?`)) return
+
+    setIsDeletingFailedPosts(true)
+    const results = await Promise.allSettled(failedPosts.map((post) => deletePost(post.id)))
+    await loadData()
+    const failedDeletions = results.filter((result) => result.status === "rejected")
+    if (failedDeletions.length > 0) {
+      const reason = failedDeletions[0].reason
+      setToast({
+        tone: "error",
+        text: reason instanceof Error ? reason.message : "Unable to delete some failed posts.",
+      })
+    } else {
+      setToast({ tone: "success", text: `${failedPosts.length} failed posts deleted.` })
+    }
+    setIsDeletingFailedPosts(false)
+  }
+
   async function handlePublishNow(post: Post, accountName: string) {
     if (publishingPostIdsRef.current.has(post.id)) return
     if (!window.confirm(`Publish this to ${accountName} now?`)) return
@@ -182,7 +233,7 @@ export default function DashboardPage() {
           {accounts.length > 0 && (
             <>
               <div className="flex flex-wrap items-center gap-2" aria-label="Filter posts by provider">
-                {(["all", "facebook", "instagram"] as const).map((provider) => (
+                {(["all", "facebook", "instagram", "threads"] as const).map((provider) => (
                   <Button
                     key={provider}
                     size="sm"
@@ -210,6 +261,16 @@ export default function DashboardPage() {
                 </Button>
               ))}
               {failedCount > 0 ? <Badge variant="destructive" aria-label={`${failedCount} failed posts`}>{failedCount} failed</Badge> : null}
+              {failedCount > 0 ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => void handleClearFailedPosts()}
+                  disabled={isDeletingFailedPosts}
+                >
+                  {isDeletingFailedPosts ? "Deleting..." : "Clear all failed"}
+                </Button>
+              ) : null}
               </div>
             </>
           )}
@@ -235,12 +296,26 @@ export default function DashboardPage() {
                             <Badge variant={post.status === "failed" ? "destructive" : "secondary"}>
                               {postStatusLabel(post.status)}
                             </Badge>
-                            {account ? (
-                              <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                                {account.name}
-                                <Badge variant="outline">{providerLabel(account.provider)}</Badge>
-                              </span>
-                            ) : null}
+                            <div className="flex items-center gap-2">
+                              {account ? (
+                                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  {account.name}
+                                  <Badge variant="outline">{providerLabel(account.provider)}</Badge>
+                                </span>
+                              ) : null}
+                              {post.status === "failed" ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Delete failed post"
+                                  title="Delete failed post"
+                                  onClick={() => void handleDeleteFailedPost(post)}
+                                  disabled={isDeletingFailedPosts}
+                                >
+                                  <Trash2 aria-hidden="true" size={16} />
+                                </Button>
+                              ) : null}
+                            </div>
                           </div>
                           <p className="text-sm leading-6">{post.content.slice(0, 140)}{post.content.length > 140 ? "…" : ""}</p>
                         </CardHeader>
@@ -306,6 +381,14 @@ export default function DashboardPage() {
             )}
         </div>
       </main>
+      {toast ? (
+        <div
+          role={toast.tone === "error" ? "alert" : "status"}
+          className={`fixed bottom-5 right-5 z-[70] max-w-sm rounded-lg border bg-background px-4 py-3 text-sm shadow-lg ${toast.tone === "error" ? "border-destructive/40" : "border-primary/40"}`}
+        >
+          {toast.text}
+        </div>
+      ) : null}
     </AuthGate>
   )
 }

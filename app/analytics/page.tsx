@@ -42,9 +42,11 @@ import {
   getAnalyticsOverview,
   listAnalyticsAccounts,
   listAnalyticsPosts,
+  threadsConnectUrl,
   type Account,
 } from "@/lib/api"
 import type { AnalyticsMetric, AnalyticsOverview, AnalyticsPost } from "@/lib/api-types"
+import { providerLabel } from "@/lib/social"
 
 const ranges = [
   { days: 7 as const, label: "Last 7 days" },
@@ -52,7 +54,7 @@ const ranges = [
   { days: 90 as const, label: "Last 90 days" },
 ]
 
-const metrics: { key: AnalyticsMetric; label: string }[] = [
+const facebookMetrics: { key: AnalyticsMetric; label: string }[] = [
   { key: "views", label: "Views" },
   { key: "reach", label: "Reach" },
   { key: "engagements", label: "Engagements" },
@@ -60,6 +62,25 @@ const metrics: { key: AnalyticsMetric; label: string }[] = [
   { key: "unfollows", label: "Unfollows" },
   { key: "followers_total", label: "Followers" },
 ]
+
+const threadsMetrics: { key: AnalyticsMetric; label: string }[] = [
+  { key: "views", label: "Views" },
+  { key: "likes", label: "Likes" },
+  { key: "replies", label: "Replies" },
+  { key: "reposts", label: "Reposts" },
+  { key: "quotes", label: "Quotes" },
+  { key: "followers_total", label: "Followers" },
+]
+
+function metricsFor(provider?: Account["provider"]) {
+  return provider === "threads" ? threadsMetrics : facebookMetrics
+}
+
+function reconnectUrl(account: Account) {
+  return account.provider === "threads"
+    ? threadsConnectUrl()
+    : facebookConnectUrl(account.id)
+}
 
 const growthChartConfig = {
   followers: { label: "Followers", color: "var(--chart-2)" },
@@ -113,12 +134,12 @@ function errorCode(error: unknown) {
   return error instanceof ApiError ? error.code : undefined
 }
 
-function LoadingSkeleton() {
+function LoadingSkeleton({ provider }: { provider?: Account["provider"] }) {
   return (
     <div role="status" aria-label="Loading analytics" className="space-y-5">
       <span className="sr-only">Loading analytics...</span>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {metrics.map((metric) => (
+        {metricsFor(provider).map((metric) => (
           <div key={metric.key} className="h-28 animate-pulse rounded-2xl bg-muted" />
         ))}
       </div>
@@ -164,11 +185,13 @@ function AnalyticsContent() {
     listAnalyticsAccounts()
       .then((loadedAccounts) => {
         if (!active) return
-        const facebookAccounts = loadedAccounts.filter((account) => account.provider === "facebook")
-        setAccounts(facebookAccounts)
-        setAccountId((current) => facebookAccounts.some((account) => account.id === current)
+        const supportedAccounts = loadedAccounts.filter(
+          (account) => account.provider === "facebook" || account.provider === "threads"
+        )
+        setAccounts(supportedAccounts)
+        setAccountId((current) => supportedAccounts.some((account) => account.id === current)
           ? current
-          : facebookAccounts[0]?.id ?? null)
+          : supportedAccounts[0]?.id ?? null)
       })
       .catch(() => {
         if (active) setAccountError(true)
@@ -209,6 +232,10 @@ function AnalyticsContent() {
   }, [accountId, days, requestKey])
 
   const selectedAccount = accounts.find((account) => account.id === accountId) ?? null
+  const accountMetrics = metricsFor(selectedAccount?.provider)
+  const threadsMissingPermission = selectedAccount?.provider === "threads"
+    && (errorCode(overviewError) === "missing_permission"
+      || errorCode(postsError) === "missing_permission")
   const chartPoints = useMemo(() => overview ? buildAnalyticsChartPoints(overview) : [], [overview])
   const actualRangeDays = overview && typeof overview.range === "object"
     ? rangeDayCount(overview.range.since, overview.range.until)
@@ -219,7 +246,7 @@ function AnalyticsContent() {
     ? { actual: actualRangeDays, requested: days }
     : null
   const hasAnalytics = overview !== null && (
-    metrics.some(({ key }) => !isMetricUnavailable(overview, key)
+    accountMetrics.some(({ key }) => !isMetricUnavailable(overview, key)
       && overview.totals?.[key] !== null
       && overview.totals?.[key] !== undefined)
     || chartPoints.some((point) => point.netChange !== null || point.followers !== null)
@@ -234,7 +261,7 @@ function AnalyticsContent() {
       <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Performance and audience growth for your Facebook pages.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Performance and audience growth across your supported social accounts.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <div className="min-w-52 space-y-1.5">
@@ -252,6 +279,9 @@ function AnalyticsContent() {
                   <SelectItem key={account.id} value={String(account.id)}>
                     <span className="flex items-center gap-2">
                       {account.name}
+                      <Badge variant="outline" className="text-[10px]">
+                        {providerLabel(account.provider)}
+                      </Badge>
                       {account.status === "needs_reauth" ? (
                         <Badge variant="outline" className="text-[10px]">Needs reauth</Badge>
                       ) : null}
@@ -281,7 +311,7 @@ function AnalyticsContent() {
 
       {accountError ? (
         <section role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
-          <p className="text-sm">Unable to load Facebook accounts.</p>
+          <p className="text-sm">Unable to load social accounts.</p>
           <Button type="button" variant="outline" className="mt-3" onClick={() => {
             setAccountLoading(true)
             setAccountError(false)
@@ -291,121 +321,137 @@ function AnalyticsContent() {
           </Button>
         </section>
       ) : accountLoading ? (
-        <LoadingSkeleton />
+        <LoadingSkeleton provider={selectedAccount?.provider} />
       ) : accounts.length === 0 ? (
         <section className="rounded-xl border border-dashed border-border p-8 text-center">
-          <h2 className="font-medium">No Facebook accounts connected</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Connect a Facebook page to view its analytics.</p>
+          <h2 className="font-medium">No supported accounts connected</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Connect a Facebook or Threads account to view analytics.</p>
           <a href="/accounts" className={buttonVariants({ className: "mt-4" })}>Manage accounts</a>
         </section>
       ) : selectedAccount ? (
-        <>
-          {selectedAccount.status === "needs_reauth" ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-muted p-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="outline" className="border-primary/40 text-foreground">Needs reauth</Badge>
-                <span>Reconnect this account to restore analytics access.</span>
-              </div>
-              <a href={facebookConnectUrl(selectedAccount.id)} className={buttonVariants({ size: "sm", variant: "outline" })}>
-                Reconnect
-              </a>
-            </div>
-          ) : null}
-
-          {overviewError ? (
-            <AnalyticsError
-              code={errorCode(overviewError)}
-              account={selectedAccount}
-              retry={retry}
-            />
-          ) : null}
-
-          {analyticsLoading ? (
-            <LoadingSkeleton />
-          ) : overview ? (
-            <>
-              {!hasAnalytics && posts.length === 0 && !analyticsLoading ? (
-                <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                  No analytics data is available for this account and date range yet.
-                </p>
-              ) : null}
-
-              <section aria-label="Performance metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {metrics.map(({ key, label }) => (
-                  <Card key={key} size="sm">
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">{label}</p>
-                      <p className="mt-2 text-2xl font-semibold tabular-nums">
-                        {metricValue(overview, key)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </section>
-
-              <section className="grid min-w-0 gap-5">
-                <FollowerGrowthCard points={chartPoints} limitedRange={limitedRange} />
-              </section>
-            </>
-          ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent posts</CardTitle>
-              <CardDescription>Engagement for posts published by this account.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {analyticsLoading ? (
-                <div role="status" className="h-36 animate-pulse rounded-xl bg-muted" />
-              ) : postsError ? (
-                <PostsError
-                  code={errorCode(postsError)}
-                  account={selectedAccount}
-                  overviewAvailable={overview !== null}
-                  retry={retry}
-                />
-              ) : posts.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">No recent posts found.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[42rem] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-xs text-muted-foreground">
-                        <th scope="col" className="pb-3 pr-4 font-medium">Post</th>
-                        <th scope="col" className="pb-3 px-3 font-medium">Date</th>
-                        <th scope="col" className="pb-3 px-3 text-right font-medium">Reactions</th>
-                        <th scope="col" className="pb-3 px-3 text-right font-medium">Comments</th>
-                        <th scope="col" className="pb-3 pl-3 text-right font-medium">Shares</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {posts.map((post) => (
-                        <tr key={post.id} className="border-b border-border/70 last:border-0">
-                          <td className="max-w-80 py-3 pr-4">
-                            <a
-                              href={post.permalink_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="line-clamp-2 font-medium hover:text-foreground"
-                            >
-                              {post.message || "View post"}
-                            </a>
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
-                            {post.created_time ? new Date(post.created_time).toLocaleDateString() : "n/a"}
-                          </td>
-                          <td className="px-3 py-3 text-right tabular-nums">{post.reactions ?? "n/a"}</td>
-                          <td className="px-3 py-3 text-right tabular-nums">{post.comments ?? "n/a"}</td>
-                          <td className="pl-3 py-3 text-right tabular-nums">{post.shares ?? "n/a"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+        threadsMissingPermission ? (
+          <section className="rounded-xl border border-dashed border-border p-8 text-center">
+            <h2 className="font-medium">Threads analytics needs an extra permission</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Reconnect Threads to approve the permission needed to load analytics.
+            </p>
+            <Button
+              type="button"
+              className="mt-4"
+              onClick={() => { window.location.href = threadsConnectUrl() }}
+            >
+              Reconnect Threads
+            </Button>
+          </section>
+        ) : (
+          <>
+            {selectedAccount.status === "needs_reauth" ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-muted p-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline" className="border-primary/40 text-foreground">Needs reauth</Badge>
+                  <span>Reconnect this account to restore analytics access.</span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
+                <a href={reconnectUrl(selectedAccount)} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                  Reconnect
+                </a>
+              </div>
+            ) : null}
+
+            {overviewError ? (
+              <AnalyticsError
+                code={errorCode(overviewError)}
+                account={selectedAccount}
+                retry={retry}
+              />
+            ) : null}
+
+            {analyticsLoading ? (
+              <LoadingSkeleton provider={selectedAccount.provider} />
+            ) : overview ? (
+              <>
+                {!hasAnalytics && posts.length === 0 && !analyticsLoading ? (
+                  <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                    No analytics data is available for this account and date range yet.
+                  </p>
+                ) : null}
+
+                <section aria-label="Performance metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {accountMetrics.map(({ key, label }) => (
+                    <Card key={key} size="sm">
+                      <CardContent className="pt-4">
+                        <p className="text-sm text-muted-foreground">{label}</p>
+                        <p className="mt-2 text-2xl font-semibold tabular-nums">
+                          {metricValue(overview, key)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </section>
+
+                <section className="grid min-w-0 gap-5">
+                  <FollowerGrowthCard points={chartPoints} limitedRange={limitedRange} />
+                </section>
+              </>
+            ) : null}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent posts</CardTitle>
+                <CardDescription>Engagement for posts published by this account.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {analyticsLoading ? (
+                  <div role="status" className="h-36 animate-pulse rounded-xl bg-muted" />
+                ) : postsError ? (
+                  <PostsError
+                    code={errorCode(postsError)}
+                    account={selectedAccount}
+                    overviewAvailable={overview !== null}
+                    retry={retry}
+                  />
+                ) : posts.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">No recent posts found.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[42rem] text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-xs text-muted-foreground">
+                          <th scope="col" className="pb-3 pr-4 font-medium">Post</th>
+                          <th scope="col" className="pb-3 px-3 font-medium">Date</th>
+                          <th scope="col" className="pb-3 px-3 text-right font-medium">{selectedAccount.provider === "threads" ? "Likes" : "Reactions"}</th>
+                          <th scope="col" className="pb-3 px-3 text-right font-medium">{selectedAccount.provider === "threads" ? "Replies" : "Comments"}</th>
+                          <th scope="col" className="pb-3 pl-3 text-right font-medium">Shares</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {posts.map((post) => (
+                          <tr key={post.id} className="border-b border-border/70 last:border-0">
+                            <td className="max-w-80 py-3 pr-4">
+                              <a
+                                href={post.permalink_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="line-clamp-2 font-medium hover:text-foreground"
+                              >
+                                {post.message || "View post"}
+                              </a>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
+                              {post.created_time ? new Date(post.created_time).toLocaleDateString() : "n/a"}
+                            </td>
+                            <td className="px-3 py-3 text-right tabular-nums">{post.reactions ?? "n/a"}</td>
+                            <td className="px-3 py-3 text-right tabular-nums">{post.comments ?? "n/a"}</td>
+                            <td className="pl-3 py-3 text-right tabular-nums">{post.shares ?? "n/a"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )
       ) : null}
     </main>
   )
@@ -424,13 +470,13 @@ function PostsError({
 }) {
   const needsReconnect = code === "missing_permission" || code === "needs_reauth"
   const message = code === "missing_permission"
-    ? "Recent post insights need an additional Facebook permission. Reconnect this account to approve it."
+    ? `Recent post insights need an additional ${providerLabel(account.provider)} permission. Reconnect this account to approve it.`
     : code === "needs_reauth"
-      ? "Recent posts require this Facebook account to be reconnected."
-      : code === "facebook_unavailable"
+      ? `Recent posts require this ${providerLabel(account.provider)} account to be reconnected.`
+      : code === "facebook_unavailable" || code === "threads_unavailable"
         ? overviewAvailable
           ? "Recent posts are temporarily unavailable. Your overview analytics loaded successfully."
-          : "Facebook could not load recent posts. Try again shortly."
+          : `${providerLabel(account.provider)} could not load recent posts. Try again shortly.`
         : "Unable to load recent posts."
 
   return (
@@ -438,7 +484,7 @@ function PostsError({
       <span>{message}</span>
       <div className="flex gap-2">
         {needsReconnect ? (
-          <a href={facebookConnectUrl(account.id)} className={buttonVariants({ size: "sm", variant: "outline" })}>
+          <a href={reconnectUrl(account)} className={buttonVariants({ size: "sm", variant: "outline" })}>
             Reconnect
           </a>
         ) : null}
@@ -459,11 +505,11 @@ function AnalyticsError({
 }) {
   const reconnect = code === "missing_permission" || code === "needs_reauth"
   const message = code === "missing_permission"
-    ? "Facebook requires a new permission to show analytics. Reconnect this account to approve the permission."
+    ? `${providerLabel(account.provider)} requires a new permission to show analytics. Reconnect this account to approve the permission.`
     : code === "needs_reauth"
-      ? "This Facebook account needs to be reconnected before analytics can load."
-      : code === "facebook_unavailable"
-        ? "Facebook analytics are temporarily unavailable. Try again shortly."
+      ? `This ${providerLabel(account.provider)} account needs to be reconnected before analytics can load.`
+      : code === "facebook_unavailable" || code === "threads_unavailable"
+        ? `${providerLabel(account.provider)} analytics are temporarily unavailable. Try again shortly.`
         : "Unable to load analytics for this account."
 
   return (
@@ -471,7 +517,7 @@ function AnalyticsError({
       <p className="max-w-2xl text-sm">{message}</p>
       <div className="flex gap-2">
         {reconnect ? (
-          <a href={facebookConnectUrl(account.id)} className={buttonVariants({ size: "sm", variant: "outline" })}>
+          <a href={reconnectUrl(account)} className={buttonVariants({ size: "sm", variant: "outline" })}>
             Reconnect
           </a>
         ) : null}

@@ -91,7 +91,17 @@ export type SocialAccount = {
   connected_at: string
 }
 
-export type AnalyticsMetric = "views" | "reach" | "engagements" | "follows" | "unfollows" | "followers_total"
+export type AnalyticsMetric =
+  | "views"
+  | "reach"
+  | "engagements"
+  | "follows"
+  | "unfollows"
+  | "followers_total"
+  | "likes"
+  | "replies"
+  | "reposts"
+  | "quotes"
 
 export type AnalyticsSeriesPoint = { date: string; value: number | null }
 
@@ -99,7 +109,7 @@ export type SocialProvider = "facebook" | "instagram" | "threads"
 
 export type AnalyticsOverview = {
   range: string | { since: string; until: string; days: number }
-  totals: Record<AnalyticsMetric, number | null>
+  totals: Partial<Record<AnalyticsMetric, number | null>>
   series: Partial<Record<AnalyticsMetric, AnalyticsSeriesPoint[] | null>> & {
     net_follower_growth?: AnalyticsSeriesPoint[] | null
   }
@@ -107,8 +117,8 @@ export type AnalyticsOverview = {
 }
 
 export type AnalyticsPost = {
-  id: number
-  message: string
+  id: number | string
+  message: string | null
   created_time: string
   permalink_url: string
   reactions: number | null

@@ -97,6 +97,45 @@ test("analytics errors preserve the backend error code for page-specific states"
   await assert.rejects(getAnalyticsOverview(8, 7), (error) => error.code === "needs_reauth")
 })
 
+test("expected missing-permission responses are not logged, while unexpected server errors are", async (context) => {
+  const originalFetch = globalThis.fetch
+  const originalApiUrl = process.env.NEXT_PUBLIC_API_URL
+  const originalNodeEnv = process.env.NODE_ENV
+  const originalConsoleError = console.error
+  const originalConsoleWarn = console.warn
+  const loggedErrors = []
+  const loggedWarnings = []
+  let requestCount = 0
+
+  process.env.NEXT_PUBLIC_API_URL = "https://api.example.test"
+  process.env.NODE_ENV = "development"
+  console.error = (...args) => loggedErrors.push(args)
+  console.warn = (...args) => loggedWarnings.push(args)
+  globalThis.fetch = async () => {
+    requestCount += 1
+    return requestCount === 1
+      ? Response.json({ detail: "Reconnect Threads.", code: "missing_permission" }, { status: 403 })
+      : Response.json({ detail: "Unexpected failure." }, { status: 500 })
+  }
+  context.after(() => {
+    globalThis.fetch = originalFetch
+    console.error = originalConsoleError
+    console.warn = originalConsoleWarn
+    if (originalApiUrl === undefined) delete process.env.NEXT_PUBLIC_API_URL
+    else process.env.NEXT_PUBLIC_API_URL = originalApiUrl
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = originalNodeEnv
+  })
+
+  await assert.rejects(getAnalyticsOverview(8, 7), (error) => error.code === "missing_permission")
+  assert.deepEqual(loggedErrors, [])
+  assert.deepEqual(loggedWarnings, [])
+
+  await assert.rejects(getAnalyticsOverview(8, 7), (error) => error.status === 500)
+  assert.equal(loggedErrors.length, 1)
+  assert.deepEqual(loggedWarnings, [])
+})
+
 test("repeated follower totals and zero net changes do not fabricate flat history", () => {
   const overview = overviewWithSeries({
     follows: [0, 0, 0, 0, 0, 0, 0],

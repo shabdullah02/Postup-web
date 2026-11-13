@@ -183,18 +183,6 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
 
   if (!response.ok) {
     const text = await response.text()
-    if (process.env.NODE_ENV === "development") {
-      const logFailure = response.status >= 500 ? console.error : console.warn
-      logFailure(
-        "API request failed.",
-        "URL:",
-        url,
-        "Status:",
-        response.status,
-        "Response body:",
-        text
-      )
-    }
     let payload: ApiErrorPayload | undefined
     let message = ""
     let code: string | undefined
@@ -214,6 +202,20 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       }
     } catch {
       payload = undefined
+    }
+
+    if (process.env.NODE_ENV === "development"
+      && !(response.status === 403 && code === "missing_permission")) {
+      const logFailure = response.status >= 500 ? console.error : console.warn
+      logFailure(
+        "API request failed.",
+        "URL:",
+        url,
+        "Status:",
+        response.status,
+        "Response body:",
+        text
+      )
     }
 
     let errorMessage = message || `Request failed (${response.status}). Please try again.`
@@ -267,13 +269,8 @@ export function instagramConnectUrl(): string {
   return url.toString()
 }
 
-export async function getThreadsAuthorizationUrl(): Promise<string> {
-  const response = await apiFetch("/api/socials/threads/connect/")
-  const data = await response.json() as { authorization_url?: unknown }
-  if (typeof data.authorization_url !== "string" || data.authorization_url.length === 0) {
-    throw new Error("Threads did not provide an authorization URL. Try connecting again.")
-  }
-  return data.authorization_url
+export function threadsConnectUrl(): string {
+  return new URL("/api/socials/threads/connect/", getApiBaseUrl()).toString()
 }
 
 export type FacebookPage = {
